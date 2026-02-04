@@ -1,0 +1,5 @@
+{
+  "name": "mypictures-describe",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-02-04",
+}

@@ -215,8 +215,6 @@ body {
   color: var(--muted);
 }
 
-/* Khung video ổn định mọi trình duyệt */
-
 .ratio {
   width: min(960px, 100%);
   border-radius: 16px;
@@ -226,15 +224,11 @@ body {
   position: relative;
 }
 
-/* 16:9 */
-
 .ratio::before {
   content: "";
   display: block;
   padding-top: 56.25%;
 }
-
-/* Video/iframe fill full khung */
 
 .ratio > video,
 .ratio > iframe {
@@ -247,7 +241,7 @@ body {
   object-fit: contain;
 }
 
-/* ===== LIGHTBOX V2 (EDITOR) ===== */
+/* ===== LIGHTBOX (EDITOR) ===== */
 
 .lightbox {
   position: fixed;
@@ -281,6 +275,13 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.lb-headtext {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
 .lb-title {
   color: rgba(231, 233, 238, 0.9);
   font-weight: 600;
@@ -288,6 +289,27 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ✅ FIX: no error, has standard + webkit */
+
+.lb-desc {
+  color: rgba(231, 233, 238, 0.72);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.lb-desc.multiline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 .lb-close {
@@ -318,9 +340,7 @@ body {
   font-weight: 600;
   font-size: 0.9rem;
   -webkit-user-select: none;
-  /* Safari / iOS */
   user-select: none;
-  /* Chrome, Firefox, Edge */
 }
 
 .lb-btn:disabled {

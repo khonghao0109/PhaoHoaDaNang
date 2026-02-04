@@ -2,12 +2,10 @@ const albumsEl = document.getElementById("albums");
 const filterEl = document.getElementById("filter");
 const searchEl = document.getElementById("search");
 
-/** =========================
- *  LIGHTBOX / IMAGE EDITOR
- *  ========================= */
 const lightbox = document.getElementById("lightbox");
 const lbClose = document.getElementById("lbClose");
 const lbCaption = document.getElementById("lbCaption");
+const lbDesc = document.getElementById("lbDesc");
 
 const lbCanvas = document.getElementById("lbCanvas");
 const ctx = lbCanvas.getContext("2d", { alpha: false });
@@ -27,6 +25,17 @@ const lbHint = document.getElementById("lbHint");
 
 const btnDownloadOriginal = document.getElementById("btnDownloadOriginal");
 const btnDownloadEdited = document.getElementById("btnDownloadEdited");
+
+/** =========================
+ *  AI caption config
+ *  ========================= */
+const DESCRIBE_ENDPOINT = "YOUR_BACKEND_DESCRIBE_ENDPOINT"; // 👈 thay URL worker tại đây
+let describeAbort = null;
+const descCache = new Map();
+
+/** =========================
+ *  LIGHTBOX / IMAGE EDITOR
+ *  ========================= */
 
 // State
 let imgEl = new Image();
@@ -72,7 +81,7 @@ function scheduleDownloadLinksUpdate() {
   clearTimeout(dlTimer);
   dlTimer = setTimeout(() => {
     updateDownloadLinks().catch(() => {});
-  }, 120); // 120ms là mượt khi drag crop/zoom
+  }, 120);
 }
 
 function setLightboxOpen(open) {
@@ -93,9 +102,11 @@ function resetEdits() {
   state.gray = false;
   state.cropMode = false;
   state.cropRect = null;
+
   drag.active = false;
   drag.start = null;
   drag.end = null;
+
   updateCropButtons();
   draw();
 }
@@ -122,7 +133,6 @@ function fitCanvasToCSSSize() {
 }
 
 function getDrawParams() {
-  // Determine the displayed image "logical" size after rotation (before zoom)
   const iw = imgEl.naturalWidth;
   const ih = imgEl.naturalHeight;
   const rot = ((state.rot % 360) + 360) % 360;
@@ -130,7 +140,6 @@ function getDrawParams() {
   const rotatedW = rot === 90 || rot === 270 ? ih : iw;
   const rotatedH = rot === 90 || rot === 270 ? iw : ih;
 
-  // Fit rotated rect inside canvas
   const cw = lbCanvas.width;
   const ch = lbCanvas.height;
 
@@ -143,88 +152,84 @@ function draw() {
   if (!imgEl || !imgEl.naturalWidth) return;
 
   fitCanvasToCSSSize();
-  const { iw, ih, rot, rotatedW, rotatedH, scaleToFit, cw, ch } =
-    getDrawParams();
+  const { iw, ih, rot, scaleToFit, cw, ch } = getDrawParams();
 
-  // Clear
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, cw, ch);
 
-  // Center
   ctx.save();
   ctx.translate(cw / 2, ch / 2);
 
-  // Grayscale filter (preview)
   ctx.filter = state.gray ? "grayscale(1)" : "none";
-
-  // Apply flip (in display space)
   ctx.scale(state.flipX, state.flipY);
-
-  // Apply rotation in display space
   ctx.rotate((rot * Math.PI) / 180);
 
-  // After rotate, draw original image centered with correct scaling:
-  // If rot is 90/270, width/height swap in drawing
-  // But easiest: rotate context then draw original with its own w/h
   const drawW = iw * scaleToFit;
   const drawH = ih * scaleToFit;
 
   ctx.drawImage(imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
   ctx.restore();
 
-  // Draw crop overlay (if crop mode or cropRect exists)
-  if (state.cropMode || state.cropRect) {
-    drawCropOverlay();
-  }
+  if (state.cropMode || state.cropRect) drawCropOverlay();
 
-  // Update download links (debounced)
   scheduleDownloadLinksUpdate();
 }
 
 function canvasToImageSpace(canvasX, canvasY) {
-  // Map a point from CANVAS coords to IMAGE coords under current transform
-  // We'll reverse the draw transform approximately using known params.
   const { iw, ih, rot, scaleToFit, cw, ch } = getDrawParams();
 
-  // Translate so origin is canvas center
   let x = canvasX - cw / 2;
   let y = canvasY - ch / 2;
 
-  // Reverse rotation
   const ang = (-rot * Math.PI) / 180;
   const cos = Math.cos(ang);
   const sin = Math.sin(ang);
   let rx = x * cos - y * sin;
   let ry = x * sin + y * cos;
 
-  // Reverse flips
   rx /= state.flipX;
   ry /= state.flipY;
 
-  // Reverse scale
   rx /= scaleToFit;
   ry /= scaleToFit;
 
-  // Now rx, ry is in original image space centered at (0,0)
   const ix = rx + iw / 2;
   const iy = ry + ih / 2;
 
   return { ix: clamp(ix, 0, iw), iy: clamp(iy, 0, ih) };
 }
 
+function imageToCanvasSpace(ix, iy) {
+  const { iw, ih, rot, scaleToFit, cw, ch } = getDrawParams();
+
+  let x = ix - iw / 2;
+  let y = iy - ih / 2;
+
+  x *= scaleToFit;
+  y *= scaleToFit;
+
+  x *= state.flipX;
+  y *= state.flipY;
+
+  const ang = (rot * Math.PI) / 180;
+  const cos = Math.cos(ang);
+  const sin = Math.sin(ang);
+  const rx = x * cos - y * sin;
+  const ry = x * sin + y * cos;
+
+  return { cx: rx + cw / 2, cy: ry + ch / 2 };
+}
+
 function drawCropOverlay() {
   const cw = lbCanvas.width;
   const ch = lbCanvas.height;
 
-  // Darken overlay
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(0, 0, cw, ch);
 
-  // Determine crop rectangle in canvas coords for display
   let crop = state.cropRect;
 
-  // If actively dragging, show temp crop from drag points
   if (state.cropMode && drag.start && drag.end) {
     const p1 = canvasToImageSpace(drag.start.x, drag.start.y);
     const p2 = canvasToImageSpace(drag.end.x, drag.end.y);
@@ -242,7 +247,6 @@ function drawCropOverlay() {
     return;
   }
 
-  // Convert crop rect from image space -> canvas space by sampling 4 corners
   const corners = [
     imageToCanvasSpace(crop.x, crop.y),
     imageToCanvasSpace(crop.x + crop.w, crop.y),
@@ -250,7 +254,6 @@ function drawCropOverlay() {
     imageToCanvasSpace(crop.x, crop.y + crop.h),
   ];
 
-  // Clear the crop area from overlay via polygon
   ctx.globalCompositeOperation = "destination-out";
   ctx.beginPath();
   ctx.moveTo(corners[0].cx, corners[0].cy);
@@ -259,7 +262,6 @@ function drawCropOverlay() {
   ctx.closePath();
   ctx.fill();
 
-  // Draw crop border
   ctx.globalCompositeOperation = "source-over";
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 2;
@@ -273,63 +275,12 @@ function drawCropOverlay() {
   ctx.restore();
 }
 
-function imageToCanvasSpace(ix, iy) {
-  // Map point from IMAGE coords to CANVAS coords under current transform
-  const { iw, ih, rot, scaleToFit, cw, ch } = getDrawParams();
-
-  // Convert image space to centered coords
-  let x = ix - iw / 2;
-  let y = iy - ih / 2;
-
-  // Apply scale
-  x *= scaleToFit;
-  y *= scaleToFit;
-
-  // Apply flips
-  x *= state.flipX;
-  y *= state.flipY;
-
-  // Apply rotation
-  const ang = (rot * Math.PI) / 180;
-  const cos = Math.cos(ang);
-  const sin = Math.sin(ang);
-  const rx = x * cos - y * sin;
-  const ry = x * sin + y * cos;
-
-  // Translate back to canvas coords
-  return { cx: rx + cw / 2, cy: ry + ch / 2 };
-}
-
-function renderEditedToCanvas(outputCtx, outW, outH) {
-  // Render current transform to a target context at desired size
-  const iw = imgEl.naturalWidth;
-  const ih = imgEl.naturalHeight;
-  const rot = ((state.rot % 360) + 360) % 360;
-
-  outputCtx.save();
-  outputCtx.fillStyle = "#000";
-  outputCtx.fillRect(0, 0, outW, outH);
-
-  outputCtx.translate(outW / 2, outH / 2);
-  outputCtx.filter = state.gray ? "grayscale(1)" : "none";
-  outputCtx.scale(state.flipX, state.flipY);
-  outputCtx.rotate((rot * Math.PI) / 180);
-
-  outputCtx.drawImage(imgEl, -iw / 2, -ih / 2, iw, ih);
-  outputCtx.restore();
-}
-
 function exportEditedBlob() {
   return new Promise((resolve) => {
     const iw = imgEl.naturalWidth;
     const ih = imgEl.naturalHeight;
-
-    // If crop exists, we will crop in original image space BEFORE applying transforms?
-    // User expectation: crop the area they selected on current view.
-    // We stored cropRect in original image coordinates, so we can crop source image first.
     const crop = state.cropRect;
 
-    // Prepare source canvas (cropped original)
     const srcCanvas = document.createElement("canvas");
     const sctx = srcCanvas.getContext("2d");
 
@@ -348,8 +299,6 @@ function exportEditedBlob() {
       sctx.drawImage(imgEl, 0, 0);
     }
 
-    // Now apply transform to a final canvas
-    // Rotation changes output dimensions
     const rot = ((state.rot % 360) + 360) % 360;
     const outCanvas = document.createElement("canvas");
     const octx = outCanvas.getContext("2d", { alpha: false });
@@ -360,7 +309,6 @@ function exportEditedBlob() {
     outCanvas.width = outW;
     outCanvas.height = outH;
 
-    // Draw transformed
     octx.fillStyle = "#000";
     octx.fillRect(0, 0, outW, outH);
     octx.save();
@@ -385,11 +333,9 @@ async function updateDownloadLinks() {
     "_",
   );
 
-  // Original download
   btnDownloadOriginal.href = currentSrc;
   btnDownloadOriginal.download = `${baseName}.${ext}`;
 
-  // Edited download (build blob URL)
   if (!imgEl || !imgEl.naturalWidth) return;
 
   if (lastEditedUrl) URL.revokeObjectURL(lastEditedUrl);
@@ -397,22 +343,96 @@ async function updateDownloadLinks() {
   const blob = await exportEditedBlob();
   lastEditedUrl = URL.createObjectURL(blob);
   btnDownloadEdited.href = lastEditedUrl;
-  btnDownloadEdited.download = `${baseName}_edited.jpg`; // ảnh xuất ra bạn đang set jpeg
+  btnDownloadEdited.download = `${baseName}_edited.jpg`;
+}
+
+/** =========================
+ *  AUTO DESCRIBE (AI)
+ *  ========================= */
+
+function getCurrentImageDataURL(maxW = 1024) {
+  const iw = imgEl.naturalWidth;
+  const ih = imgEl.naturalHeight;
+
+  let w = iw;
+  let h = ih;
+  if (Math.max(w, h) > maxW) {
+    const s = maxW / Math.max(w, h);
+    w = Math.round(w * s);
+    h = Math.round(h * s);
+  }
+
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const cctx = c.getContext("2d");
+  cctx.drawImage(imgEl, 0, 0, w, h);
+  return c.toDataURL("image/jpeg", 0.85);
+}
+
+async function autoDescribeCurrentImage() {
+  if (!imgEl || !imgEl.naturalWidth) return;
+
+  if (
+    !DESCRIBE_ENDPOINT ||
+    DESCRIBE_ENDPOINT.includes("YOUR_BACKEND_DESCRIBE_ENDPOINT")
+  ) {
+    lbDesc.textContent =
+      "⚠️ Chưa cấu hình Cloudflare Worker URL (DESCRIBE_ENDPOINT).";
+    return;
+  }
+
+  if (descCache.has(currentSrc)) {
+    lbDesc.textContent = descCache.get(currentSrc);
+    return;
+  }
+
+  if (describeAbort) describeAbort.abort();
+  describeAbort = new AbortController();
+
+  try {
+    const dataUrl = getCurrentImageDataURL(1024);
+
+    const res = await fetch(DESCRIBE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: describeAbort.signal,
+      body: JSON.stringify({
+        image_data_url: dataUrl,
+        filename: lbCaption.textContent || "",
+      }),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+
+    const desc = (json.description || "Không có mô tả.").trim();
+    descCache.set(currentSrc, desc);
+    lbDesc.textContent = desc;
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+    const msg = e && e.message ? e.message : String(e);
+    lbDesc.textContent = "❌ Lỗi mô tả ảnh: " + msg;
+  }
 }
 
 function openLightbox(src, caption) {
   currentSrc = src;
   lbCaption.textContent = caption || "";
+  lbDesc.textContent = "⏳ Đang tạo mô tả...";
+  lbDesc.classList.add("multiline");
 
   setLightboxOpen(true);
   resetEdits();
 
   imgEl = new Image();
   imgEl.crossOrigin = "anonymous";
-  imgEl.onload = () => draw();
+  imgEl.onload = () => {
+    draw();
+    autoDescribeCurrentImage(); // ✅ tự chạy khi ảnh load xong
+  };
   imgEl.src = src;
 
-  // keep downloads pointing to correct file
   btnDownloadOriginal.href = src;
   btnDownloadOriginal.download = (caption || "image") + ".jpg";
 }
@@ -420,10 +440,17 @@ function openLightbox(src, caption) {
 function closeLightbox() {
   setLightboxOpen(false);
   currentSrc = "";
+
+  if (describeAbort) {
+    describeAbort.abort();
+    describeAbort = null;
+  }
+
   if (lastEditedUrl) {
     URL.revokeObjectURL(lastEditedUrl);
     lastEditedUrl = null;
   }
+
   state.cropRect = null;
   state.cropMode = false;
 }
@@ -442,31 +469,23 @@ btnZoomIn.addEventListener("click", () => {
   state.zoom = clamp(state.zoom * 1.15, 0.2, 6);
   draw();
 });
-
 btnZoomOut.addEventListener("click", () => {
   state.zoom = clamp(state.zoom / 1.15, 0.2, 6);
   draw();
 });
-
-btnReset.addEventListener("click", () => {
-  resetEdits();
-});
-
+btnReset.addEventListener("click", () => resetEdits());
 btnRotate.addEventListener("click", () => {
   state.rot = (state.rot + 90) % 360;
   draw();
 });
-
 btnFlipX.addEventListener("click", () => {
   state.flipX *= -1;
   draw();
 });
-
 btnFlipY.addEventListener("click", () => {
   state.flipY *= -1;
   draw();
 });
-
 btnGray.addEventListener("click", () => {
   state.gray = !state.gray;
   draw();
@@ -482,7 +501,6 @@ btnCrop.addEventListener("click", () => {
 });
 
 btnApplyCrop.addEventListener("click", () => {
-  // Crop already stored in state.cropRect; "apply" just leaves it as is
   state.cropMode = false;
   drag.active = false;
   drag.start = null;
@@ -500,7 +518,6 @@ btnClearCrop.addEventListener("click", () => {
   draw();
 });
 
-// Crop interactions on canvas
 function getCanvasPoint(evt) {
   const rect = lbCanvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
@@ -547,6 +564,7 @@ async function attachVideoBlob(videoEl, url) {
 /** =========================
  *  Render albums
  *  ========================= */
+
 function renderAlbum(album) {
   const article = document.createElement("article");
   article.className = "album";
@@ -593,11 +611,10 @@ function renderAlbum(album) {
       v.controls = true;
       v.preload = "metadata";
       v.playsInline = true;
-      v.loop = true; // ✅ replay tự động
+      v.loop = true;
       v.muted = false;
 
       v.addEventListener("ended", () => {
-        // fallback nếu browser không loop
         v.currentTime = 0;
         v.play().catch(() => {});
       });
