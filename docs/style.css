@@ -290,6 +290,136 @@ body {
   text-align: center;
 }
 
+/* ===== LIGHTBOX V2 (EDITOR) ===== */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  display: none;
+  background: rgba(0, 0, 0, 0.78);
+  z-index: 50;
+  padding: 18px;
+}
+
+.lightbox.open {
+  display: grid;
+  place-items: center;
+}
+
+.lb-panel {
+  width: min(1120px, 96vw);
+  background: rgba(18, 20, 26, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.lb-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lb-title {
+  color: rgba(231, 233, 238, 0.9);
+  font-weight: 600;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-close {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.lb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lb-btn {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 9px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  -webkit-user-select: none;
+  /* Safari / iOS */
+  user-select: none;
+  /* Chrome, Firefox, Edge */
+}
+
+.lb-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lb-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lb-btn-warn {
+  border-color: rgba(255, 180, 120, 0.35);
+}
+
+.lb-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lb-sep {
+  width: 1px;
+  height: 26px;
+  background: var(--line);
+  margin: 0 2px;
+}
+
+.lb-stage {
+  position: relative;
+  background: #000;
+  padding: 12px;
+}
+
+#lbCanvas {
+  width: 100%;
+  height: min(70vh, 720px);
+  display: block;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #000;
+}
+
+.lb-hint {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(231, 233, 238, 0.9);
+  font-size: 0.9rem;
+}
+
 /* ===== FOOTER ===== */
 
 .footer {

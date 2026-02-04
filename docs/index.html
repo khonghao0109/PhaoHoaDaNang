@@ -50,11 +50,54 @@
       <section id="albums" class="albums"></section>
     </main>
 
-    <!-- Lightbox -->
+    <!-- Lightbox / Image Viewer -->
     <div id="lightbox" class="lightbox" aria-hidden="true">
-      <button class="lb-close" id="lbClose" aria-label="Đóng">✕</button>
-      <img id="lbImg" alt="" />
-      <div class="lb-caption" id="lbCaption"></div>
+      <div
+        class="lb-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Xem ảnh"
+      >
+        <div class="lb-top">
+          <div class="lb-title" id="lbCaption"></div>
+          <button class="lb-close" id="lbClose" aria-label="Đóng">✕</button>
+        </div>
+
+        <div class="lb-toolbar" aria-label="Công cụ ảnh">
+          <button id="btnZoomOut" class="lb-btn">➖ Zoom</button>
+          <button id="btnZoomIn" class="lb-btn">➕ Zoom</button>
+          <button id="btnReset" class="lb-btn">↺ Reset</button>
+
+          <span class="lb-sep"></span>
+
+          <button id="btnRotate" class="lb-btn">⤾ Xoay 90°</button>
+          <button id="btnFlipX" class="lb-btn">⇋ Lật ngang</button>
+          <button id="btnFlipY" class="lb-btn">⇅ Lật dọc</button>
+          <button id="btnGray" class="lb-btn">⬛ Đen trắng</button>
+
+          <span class="lb-sep"></span>
+
+          <button id="btnCrop" class="lb-btn lb-btn-warn">✂ Crop</button>
+          <button id="btnApplyCrop" class="lb-btn" disabled>✅ Apply</button>
+          <button id="btnClearCrop" class="lb-btn" disabled>🧹 Clear</button>
+
+          <span class="lb-sep"></span>
+
+          <a id="btnDownloadOriginal" class="lb-btn lb-link" href="#" download
+            >⬇ Tải gốc</a
+          >
+          <a id="btnDownloadEdited" class="lb-btn lb-link" href="#" download
+            >⬇ Tải đã chỉnh</a
+          >
+        </div>
+
+        <div class="lb-stage">
+          <canvas id="lbCanvas"></canvas>
+          <div id="lbHint" class="lb-hint" hidden>
+            Kéo chuột để chọn vùng crop → bấm Apply
+          </div>
+        </div>
+      </div>
     </div>
 
     <footer class="footer wrap">
