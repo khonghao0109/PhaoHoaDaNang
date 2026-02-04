@@ -247,49 +247,6 @@ body {
   object-fit: contain;
 }
 
-/* ===== LIGHTBOX ===== */
-
-.lightbox {
-  position: fixed;
-  inset: 0;
-  display: none;
-  background: rgba(0, 0, 0, 0.78);
-  z-index: 50;
-  padding: 18px;
-}
-
-.lightbox.open {
-  display: grid;
-  place-items: center;
-}
-
-.lightbox img {
-  max-width: min(1100px, 95vw);
-  max-height: 80vh;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-}
-
-.lb-close {
-  position: fixed;
-  top: 14px;
-  right: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  border-radius: 12px;
-  padding: 10px 12px;
-  cursor: pointer;
-}
-
-.lb-caption {
-  margin-top: 10px;
-  color: rgba(231, 233, 238, 0.85);
-  max-width: min(1100px, 95vw);
-  text-align: center;
-}
-
 /* ===== LIGHTBOX V2 (EDITOR) ===== */
 
 .lightbox {

@@ -54,6 +54,27 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
+function getFileExtFromUrl(url) {
+  try {
+    const u = new URL(url, location.href);
+    const path = u.pathname || "";
+    const m = path.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+    return m ? m[1].toLowerCase() : "jpg";
+  } catch {
+    const m = (url || "").match(/\.(jpg|jpeg|png|webp|gif)$/i);
+    return m ? m[1].toLowerCase() : "jpg";
+  }
+}
+
+let dlTimer = null;
+
+function scheduleDownloadLinksUpdate() {
+  clearTimeout(dlTimer);
+  dlTimer = setTimeout(() => {
+    updateDownloadLinks().catch(() => {});
+  }, 120); // 120ms là mượt khi drag crop/zoom
+}
+
 function setLightboxOpen(open) {
   if (open) {
     lightbox.classList.add("open");
@@ -156,8 +177,8 @@ function draw() {
     drawCropOverlay();
   }
 
-  // Update download links
-  updateDownloadLinks();
+  // Update download links (debounced)
+  scheduleDownloadLinksUpdate();
 }
 
 function canvasToImageSpace(canvasX, canvasY) {
@@ -356,9 +377,17 @@ function exportEditedBlob() {
 
 let lastEditedUrl = null;
 async function updateDownloadLinks() {
+  if (!currentSrc) return;
+
+  const ext = getFileExtFromUrl(currentSrc);
+  const baseName = (lbCaption.textContent || "image").replace(
+    /[\\/:*?"<>|]+/g,
+    "_",
+  );
+
   // Original download
-  btnDownloadOriginal.href = currentSrc || "#";
-  btnDownloadOriginal.download = (lbCaption.textContent || "image") + ".jpg";
+  btnDownloadOriginal.href = currentSrc;
+  btnDownloadOriginal.download = `${baseName}.${ext}`;
 
   // Edited download (build blob URL)
   if (!imgEl || !imgEl.naturalWidth) return;
@@ -368,8 +397,7 @@ async function updateDownloadLinks() {
   const blob = await exportEditedBlob();
   lastEditedUrl = URL.createObjectURL(blob);
   btnDownloadEdited.href = lastEditedUrl;
-  btnDownloadEdited.download =
-    (lbCaption.textContent || "image_edited") + ".jpg";
+  btnDownloadEdited.download = `${baseName}_edited.jpg`; // ảnh xuất ra bạn đang set jpeg
 }
 
 function openLightbox(src, caption) {
