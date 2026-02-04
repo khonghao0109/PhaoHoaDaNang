@@ -29,7 +29,8 @@ const btnDownloadEdited = document.getElementById("btnDownloadEdited");
 /** =========================
  *  AI caption config
  *  ========================= */
-const DESCRIBE_ENDPOINT = "YOUR_BACKEND_DESCRIBE_ENDPOINT"; // 👈 thay URL worker tại đây
+const DESCRIBE_ENDPOINT =
+  "https://mypictures-describe.khonghao0109.workers.dev"; // 👈 thay URL worker tại đây
 let describeAbort = null;
 const descCache = new Map();
 
