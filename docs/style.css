@@ -483,14 +483,17 @@ body {
 .compare-wrapper {
     display: flex;
     gap: 20px;
-    justify-content: center;
+    align-items: flex-start;
 }
 
 .compare-box {
+    flex: 1;
     text-align: center;
 }
 
 .compare-box canvas {
-    border: 1px solid #ccc;
-    max-width: 400px;
+    width: 100%;
+    max-height: 400px;
+    background: #000;
+    border-radius: 8px;
 }

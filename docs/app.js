@@ -450,20 +450,21 @@ function openLightbox(src, caption) {
 
     imgEl = new Image();
     imgEl.crossOrigin = "anonymous";
-    img.onload = () => {
-        // 🖼️ VẼ ẢNH GỐC (THÊM ĐOẠN NÀY)
-        originalCanvas.width = img.width;
-        originalCanvas.height = img.height;
+    imgEl.onload = () => {
+        // 🖼️ Vẽ ảnh gốc
+        originalCanvas.width = imgEl.naturalWidth;
+        originalCanvas.height = imgEl.naturalHeight;
 
         originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
-        originalCtx.drawImage(img, 0, 0);
+        originalCtx.drawImage(imgEl, 0, 0);
 
-        // 👉 code cũ của bạn (GIỮ NGUYÊN)
-        lbCanvas.width = img.width;
-        lbCanvas.height = img.height;
+        // canvas chỉnh sửa
+        lbCanvas.width = imgEl.naturalWidth;
+        lbCanvas.height = imgEl.naturalHeight;
 
         draw();
     };
+
     imgEl.src = src;
 
     btnDownloadOriginal.href = src;
@@ -529,21 +530,21 @@ btnGray.addEventListener("click", () => {
 });
 
 btnBrightUp.onclick = () => {
-    state.brightness += 0.3;
+    state.brightness += 0.5;
     draw();
 };
 
 btnBrightDown.onclick = () => {
-    state.brightness -= 0.3;
+    state.brightness -= 0.5;
     draw();
 };
 btnContrastUp.onclick = () => {
-    state.contrast += 0.3;
+    state.contrast += 0.5;
     draw();
 };
 
 btnContrastDown.onclick = () => {
-    state.contrast -= 0.3;
+    state.contrast -= 0.5;
     draw();
 };
 btnSharpen.onclick = () => {
