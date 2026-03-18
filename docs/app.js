@@ -7,6 +7,8 @@ const lbClose = document.getElementById("lbClose");
 const lbCaption = document.getElementById("lbCaption");
 const lbDesc = document.getElementById("lbDesc");
 
+const originalCanvas = document.getElementById("originalCanvas");
+const originalCtx = originalCanvas.getContext("2d");
 const lbCanvas = document.getElementById("lbCanvas");
 const ctx = lbCanvas.getContext("2d", { alpha: false });
 
@@ -19,6 +21,8 @@ const btnFlipY = document.getElementById("btnFlipY");
 const btnGray = document.getElementById("btnGray");
 const btnBrightUp = document.getElementById("btnBrightUp");
 const btnBrightDown = document.getElementById("btnBrightDown");
+const btnContrastUp = document.getElementById("btnContrastUp");
+const btnContrastDown = document.getElementById("btnContrastDown");
 const btnDenoise = document.getElementById("btnDenoise");
 const btnSharpen = document.getElementById("btnSharpen");
 const btnAuto = document.getElementById("btnAuto");
@@ -53,6 +57,7 @@ let state = {
     flipX: 1, // 1 or -1
     flipY: 1, // 1 or -1
     gray: false,
+    contrast: 1,
     brightness: 1,
     sharpen: false,
     denoise: false,
@@ -174,6 +179,7 @@ function draw() {
     ctx.filter = `
   ${state.gray ? "grayscale(1)" : ""}
   brightness(${state.brightness})
+  contrast(${state.contrast})
 `;
     ctx.scale(state.flipX, state.flipY);
     ctx.rotate((rot * Math.PI) / 180);
@@ -183,7 +189,10 @@ function draw() {
 
     ctx.drawImage(imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
     ctx.restore();
-    if (state.denoise) applyDenoise();
+    if (state.denoise) {
+        applyDenoise();
+        applyDenoise();
+    }
     if (state.sharpen) applySharpen();
     if (state.cropMode || state.cropRect) drawCropOverlay();
 
@@ -441,9 +450,19 @@ function openLightbox(src, caption) {
 
     imgEl = new Image();
     imgEl.crossOrigin = "anonymous";
-    imgEl.onload = () => {
+    img.onload = () => {
+        // 🖼️ VẼ ẢNH GỐC (THÊM ĐOẠN NÀY)
+        originalCanvas.width = img.width;
+        originalCanvas.height = img.height;
+
+        originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+        originalCtx.drawImage(img, 0, 0);
+
+        // 👉 code cũ của bạn (GIỮ NGUYÊN)
+        lbCanvas.width = img.width;
+        lbCanvas.height = img.height;
+
         draw();
-        autoDescribeCurrentImage(); // ✅ tự chạy khi ảnh load xong
     };
     imgEl.src = src;
 
@@ -510,12 +529,21 @@ btnGray.addEventListener("click", () => {
 });
 
 btnBrightUp.onclick = () => {
-    state.brightness += 0.1;
+    state.brightness += 0.3;
     draw();
 };
 
 btnBrightDown.onclick = () => {
-    state.brightness -= 0.1;
+    state.brightness -= 0.3;
+    draw();
+};
+btnContrastUp.onclick = () => {
+    state.contrast += 0.3;
+    draw();
+};
+
+btnContrastDown.onclick = () => {
+    state.contrast -= 0.3;
     draw();
 };
 btnSharpen.onclick = () => {
@@ -525,7 +553,8 @@ btnSharpen.onclick = () => {
 };
 btnAuto.onclick = () => {
     state.gray = false;
-    state.brightness = 1.2;
+    state.brightness = 1.4;
+    state.contrast = 1.4;
     state.denoise = true;
     state.sharpen = true;
     draw();
@@ -646,7 +675,7 @@ function applyKernel(kernel, divisor = 1) {
 }
 
 function applySharpen() {
-    const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+    const kernel = [0, -1, 0, -1, 7, -1, 0, -1, 0];
 
     applyKernel(kernel, 1);
 }

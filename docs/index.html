@@ -65,6 +65,8 @@
                 <button id="btnGray" class="lb-btn">⬛ Đen trắng</button>
                 <button id="btnBrightUp" class="lb-btn">☀️ Sáng +</button>
                 <button id="btnBrightDown" class="lb-btn">🌙 Sáng -</button>
+                <button id="btnContrastUp" class="lb-btn">🎚️ Contrast +</button>
+                <button id="btnContrastDown" class="lb-btn">🎚️ Contrast -</button>
                 <button id="btnSharpen" class="lb-btn">🔍 Nét</button>
                 <button id="btnAuto" class="lb-btn">✨ Auto</button>
 
@@ -86,7 +88,17 @@
             </div>
 
             <div class="lb-stage">
-                <canvas id="lbCanvas"></canvas>
+                <div class="compare-wrapper">
+                    <div class="compare-box">
+                        <p>Ảnh gốc</p>
+                        <canvas id="originalCanvas"></canvas>
+                    </div>
+
+                    <div class="compare-box">
+                        <p>Ảnh sau chỉnh sửa</p>
+                        <canvas id="lbCanvas"></canvas>
+                    </div>
+                </div>
                 <div id="lbHint" class="lb-hint" hidden>
                     Kéo chuột để chọn vùng crop → bấm Apply
                 </div>
