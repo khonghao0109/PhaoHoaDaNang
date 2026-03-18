@@ -1,32 +1,6 @@
 {
   "albums": [
     {
-      "folder": "AoDaiTet",
-      "title": "AoDaiTet",
-      "description": "",
-      "images": [
-        "./media/AoDaiTet/aodai_AoDaiTet_01.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_02.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_03.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_04.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_05.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_06.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_07.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_08.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_09.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_10.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_11.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_12.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_13.jpg",
-        "./media/AoDaiTet/aodai_AoDaiTet_14.jpg"
-      ],
-      "videos": [
-        "./media/AoDaiTet/aodai_AoDaiTet_15.mp4",
-        "./media/AoDaiTet/aodai_AoDaiTet_16.mp4"
-      ],
-      "embeds": []
-    },
-    {
       "folder": "DoiSong_ThienNhien",
       "title": "DoiSong_ThienNhien",
       "description": "",
