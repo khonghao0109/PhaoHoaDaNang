@@ -17,6 +17,7 @@ const btnRotate = document.getElementById("btnRotate");
 const btnFlipX = document.getElementById("btnFlipX");
 const btnFlipY = document.getElementById("btnFlipY");
 const btnGray = document.getElementById("btnGray");
+const btnDenoise = document.getElementById("btnDenoise");
 
 const btnCrop = document.getElementById("btnCrop");
 const btnApplyCrop = document.getElementById("btnApplyCrop");
@@ -49,6 +50,7 @@ let state = {
   flipX: 1, // 1 or -1
   flipY: 1, // 1 or -1
   gray: false,
+  denoise: false,
   cropMode: false,
   cropRect: null, // {x,y,w,h} in IMAGE-SPACE (original image coords)
 };
@@ -103,7 +105,8 @@ function resetEdits() {
   state.gray = false;
   state.cropMode = false;
   state.cropRect = null;
-
+  state.denoise = false;
+  btnDenoise.classList.remove("active");
   drag.active = false;
   drag.start = null;
   drag.end = null;
@@ -170,7 +173,9 @@ function draw() {
 
   ctx.drawImage(imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
   ctx.restore();
-
+  if (state.denoise) {
+    applyDenoise();
+  }
   if (state.cropMode || state.cropRect) drawCropOverlay();
 
   scheduleDownloadLinksUpdate();
@@ -463,7 +468,11 @@ document.addEventListener("keydown", (e) => {
 lightbox.addEventListener("click", (e) => {
   if (e.target === lightbox) closeLightbox();
 });
-
+btnDenoise.addEventListener("click", () => {
+  state.denoise = !state.denoise;
+  btnDenoise.classList.toggle("active", state.denoise);
+  draw();
+});
 window.addEventListener("resize", () => draw());
 
 btnZoomIn.addEventListener("click", () => {
@@ -528,6 +537,42 @@ function getCanvasPoint(evt) {
   };
 }
 
+function applyDenoise() {
+  const imageData = ctx.getImageData(0, 0, lbCanvas.width, lbCanvas.height);
+  const data = imageData.data;
+
+  // Simple blur (box blur nhẹ)
+  const w = lbCanvas.width;
+  const h = lbCanvas.height;
+
+  const copy = new Uint8ClampedArray(data);
+
+  const getIndex = (x, y) => (y * w + x) * 4;
+
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      let r = 0,
+        g = 0,
+        b = 0;
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const i = getIndex(x + dx, y + dy);
+          r += copy[i];
+          g += copy[i + 1];
+          b += copy[i + 2];
+        }
+      }
+
+      const i = getIndex(x, y);
+      data[i] = r / 9;
+      data[i + 1] = g / 9;
+      data[i + 2] = b / 9;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
 lbCanvas.addEventListener("mousedown", (e) => {
   if (!state.cropMode) return;
   drag.active = true;
