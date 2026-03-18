@@ -115,6 +115,7 @@ function resetEdits() {
     state.gray = false;
     state.cropMode = false;
     state.cropRect = null;
+    state.contrast = 1;
     state.denoise = false;
     state.brightness = 1;
     state.sharpen = false;
@@ -167,7 +168,7 @@ function getDrawParams() {
 function draw() {
     if (!imgEl || !imgEl.naturalWidth) return;
 
-    fitCanvasToCSSSize();
+    //fitCanvasToCSSSize();
     const { iw, ih, rot, scaleToFit, cw, ch } = getDrawParams();
 
     ctx.fillStyle = "#000";
@@ -461,7 +462,7 @@ function openLightbox(src, caption) {
         // canvas chỉnh sửa
         lbCanvas.width = imgEl.naturalWidth;
         lbCanvas.height = imgEl.naturalHeight;
-
+        autoDescribeCurrentImage();
         draw();
     };
 
