@@ -53,6 +53,24 @@
             </div>
 
             <div class="lb-toolbar" aria-label="Công cụ ảnh">
+                <div class="lb-sep"></div>
+
+                <button class="lb-btn" onclick="setStart()">⏱️ Start</button>
+                <button class="lb-btn" onclick="setEnd()">⏱️ End</button>
+
+                <select id="speedControl" class="lb-btn" onchange="changeSpeed(this.value)">
+            <option value="0.25">0.25x</option>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="1.75">1.75x</option>
+            <option value="2">2x</option>
+          </select>
+
+                <button class="lb-btn" onclick="trimVideo()">🎬 Cắt video</button>
+
                 <button id="btnZoomOut" class="lb-btn">➖ Zoom</button>
                 <button id="btnZoomIn" class="lb-btn">➕ Zoom</button>
                 <button id="btnReset" class="lb-btn">↺ Reset</button>
@@ -102,6 +120,7 @@
                 <div id="lbHint" class="lb-hint" hidden>
                     Kéo chuột để chọn vùng crop → bấm Apply
                 </div>
+                <video id="lbVideo" controls style="width: 100%; display: none"></video>
             </div>
         </div>
     </div>

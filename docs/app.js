@@ -49,7 +49,13 @@ const descCache = new Map();
 // State
 let imgEl = new Image();
 imgEl.crossOrigin = "anonymous";
+let videoEl = document.getElementById("lbVideo");
 
+let videoState = {
+    start: 0,
+    end: 0,
+    speed: 1,
+};
 let currentSrc = "";
 let state = {
     zoom: 1,
@@ -168,7 +174,7 @@ function getDrawParams() {
 function draw() {
     if (!imgEl || !imgEl.naturalWidth) return;
 
-    //fitCanvasToCSSSize();
+    fitCanvasToCSSSize();
     const { iw, ih, rot, scaleToFit, cw, ch } = getDrawParams();
 
     ctx.fillStyle = "#000";
@@ -440,36 +446,45 @@ async function autoDescribeCurrentImage() {
     }
 }
 
-function openLightbox(src, caption) {
+function openLightbox(src, title) {
     currentSrc = src;
-    lbCaption.textContent = caption || "";
-    lbDesc.textContent = "⏳ Đang tạo mô tả...";
-    lbDesc.classList.add("multiline");
+    lbCaption.textContent = title || "";
+    const isVideo = src.match(/\.(mp4|webm|ogg)$/i);
 
-    setLightboxOpen(true);
-    resetEdits();
+    if (isVideo) {
+        // HIỆN VIDEO
+        videoEl.style.display = "block";
+        lbCanvas.style.display = "none";
 
-    imgEl = new Image();
-    imgEl.crossOrigin = "anonymous";
-    imgEl.onload = () => {
-        // 🖼️ Vẽ ảnh gốc
-        originalCanvas.width = imgEl.naturalWidth;
-        originalCanvas.height = imgEl.naturalHeight;
+        videoEl.src = src;
+        videoEl.load();
 
-        originalCtx.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
-        originalCtx.drawImage(imgEl, 0, 0);
+        videoEl.playbackRate = 1;
+        videoState.speed = 1;
 
-        // canvas chỉnh sửa
-        lbCanvas.width = imgEl.naturalWidth;
-        lbCanvas.height = imgEl.naturalHeight;
-        autoDescribeCurrentImage();
-        draw();
-    };
+        videoEl.onloadedmetadata = () => {
+            videoState.start = 0;
+            videoState.end = videoEl.duration;
+        };
+    } else {
+        // HIỆN ẢNH
+        videoEl.style.display = "none";
+        lbCanvas.style.display = "block";
 
-    imgEl.src = src;
+        imgEl.onload = () => {
+            // Vẽ ảnh gốc
+            originalCanvas.width = imgEl.naturalWidth;
+            originalCanvas.height = imgEl.naturalHeight;
+            originalCtx.drawImage(imgEl, 0, 0);
 
-    btnDownloadOriginal.href = src;
-    btnDownloadOriginal.download = (caption || "image") + ".jpg";
+            resetEdits();
+            draw();
+        };
+
+        imgEl.src = src;
+    }
+
+    lightbox.classList.add("open");
 }
 
 function closeLightbox() {
@@ -488,6 +503,55 @@ function closeLightbox() {
 
     state.cropRect = null;
     state.cropMode = false;
+    videoEl.pause();
+    videoEl.currentTime = 0;
+}
+
+function setStart() {
+    videoState.start = videoEl.currentTime;
+    alert("Start: " + videoState.start.toFixed(2) + "s");
+}
+
+function setEnd() {
+    videoState.end = videoEl.currentTime;
+    alert("End: " + videoState.end.toFixed(2) + "s");
+}
+
+function changeSpeed(val) {
+    videoState.speed = parseFloat(val);
+    videoEl.playbackRate = videoState.speed;
+}
+async function trimVideo() {
+    const stream = videoEl.captureStream();
+    const recorder = new MediaRecorder(stream);
+
+    let chunks = [];
+
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+
+    recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "trimmed.webm";
+        a.click();
+    };
+
+    videoEl.currentTime = videoState.start;
+    videoEl.playbackRate = videoState.speed;
+
+    recorder.start();
+
+    videoEl.play();
+
+    const duration = (videoState.end - videoState.start) / videoState.speed;
+
+    setTimeout(() => {
+        videoEl.pause();
+        recorder.stop();
+    }, duration * 1000);
 }
 
 lbClose.addEventListener("click", closeLightbox);
@@ -720,6 +784,7 @@ async function attachVideoBlob(videoEl, url) {
  *  ========================= */
 
 function renderAlbum(album) {
+    v.addEventListener("click", () => openLightbox(src, "Video"));
     const article = document.createElement("article");
     article.className = "album";
     article.dataset.category = album.folder;
