@@ -2,51 +2,55 @@
  * MyPictures — Cloudflare Worker  (src/worker.js)
  *
  * Routes:
- *   POST /describe          → AI image description (existing)
- *   GET  /folders           → list folders in GitHub repo
- *   POST /folders           → create a new folder (.gitkeep)
- *   POST /upload            → upload file(s) to GitHub repo
- *   OPTIONS *               → CORS preflight
+ *   GET  /health     → kiểm tra kết nối & secrets
+ *   GET  /folders    → liệt kê folder trong repo
+ *   POST /folders    → tạo folder mới (push .gitkeep)
+ *   POST /upload     → upload file lên GitHub
+ *   POST /describe   → AI mô tả ảnh (dùng Claude)
+ *   OPTIONS *        → CORS preflight
  *
- * Secrets (set via: wrangler secret put SECRET_NAME):
- *   GITHUB_TOKEN   — Fine-grained PAT, chỉ cần "Contents: Read & Write"
+ * Secrets (wrangler secret put <NAME>):
+ *   GITHUB_TOKEN   — Fine-grained PAT: Contents Read+Write
  *   GITHUB_OWNER   — vd: khonghao0109
  *   GITHUB_REPO    — vd: PhaoHoaDaNang
- *   GITHUB_BRANCH  — vd: main  (mặc định nếu không đặt)
- *   CLAUDE_API_KEY — cho /describe endpoint
+ *   GITHUB_BRANCH  — vd: main
+ *   CLAUDE_API_KEY — cho /describe
  */
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-function cors(body, status, extra) {
-  return new Response(body, {
+const json = (data, status) =>
+  new Response(JSON.stringify(data), {
     status: status || 200,
-    headers: Object.assign(
-      { "Content-Type": "application/json" },
-      CORS,
-      extra || {},
-    ),
+    headers: { "Content-Type": "application/json", ...CORS },
   });
+
+const err = (msg, status) => json({ error: msg }, status || 400);
+
+/* ── Safe base64 encoder (no spread, handles large buffers) ── */
+function arrayBufferToBase64(buffer) {
+  var bytes = new Uint8Array(buffer);
+  var binary = "";
+  var CHUNK = 8192;
+  for (var i = 0; i < bytes.length; i += CHUNK) {
+    var slice = bytes.subarray(i, i + CHUNK);
+    for (var j = 0; j < slice.length; j++) {
+      binary += String.fromCharCode(slice[j]);
+    }
+  }
+  return btoa(binary);
 }
 
-function json(data, status) {
-  return cors(JSON.stringify(data), status || 200);
-}
-
-function err(msg, status) {
-  return json({ error: msg }, status || 400);
-}
-
-/* ── GitHub API helper ── */
+/* ── GitHub Contents API helper ── */
 async function ghFetch(env, path, method, body) {
-  const token = env.GITHUB_TOKEN;
-  const owner = env.GITHUB_OWNER;
-  const repo = env.GITHUB_REPO;
-  const branch = env.GITHUB_BRANCH || "main";
+  var token = env.GITHUB_TOKEN;
+  var owner = env.GITHUB_OWNER;
+  var repo = env.GITHUB_REPO;
+  var branch = env.GITHUB_BRANCH || "main";
 
   if (!token || !owner || !repo) {
     throw new Error(
@@ -54,59 +58,87 @@ async function ghFetch(env, path, method, body) {
     );
   }
 
-  const url = "https://api.github.com/repos/" + owner + "/" + repo + path;
-  const opts = {
+  var url = "https://api.github.com/repos/" + owner + "/" + repo + path;
+  var opts = {
     method: method || "GET",
     headers: {
-      Authorization: "token " + token,
+      Authorization: "Bearer " + token,
       Accept: "application/vnd.github.v3+json",
-      "User-Agent": "MyPictures-Worker/1.0",
+      "User-Agent": "MyPictures-Worker/2.0",
       "Content-Type": "application/json",
     },
   };
   if (body) opts.body = JSON.stringify(body);
 
-  const res = await fetch(url, opts);
-  const data = await res.json().catch(() => ({}));
+  var res = await fetch(url, opts);
+  var data = await res.json().catch(function () {
+    return {};
+  });
   if (!res.ok) throw new Error(data.message || "GitHub API HTTP " + res.status);
-  return { data, branch };
+  return { data: data, branch: branch };
+}
+
+/* ── Get existing file SHA (null if not found) ── */
+async function getFileSha(env, filePath) {
+  var branch = env.GITHUB_BRANCH || "main";
+  try {
+    var result = await ghFetch(env, filePath + "?ref=" + branch);
+    return result.data && result.data.sha ? result.data.sha : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  Handler
+ *  Main Handler
  * ══════════════════════════════════════════════════════════════ */
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    const path = url.pathname.replace(/\/$/, "") || "/";
-    const method = request.method.toUpperCase();
+    var url = new URL(request.url);
+    var path = url.pathname.replace(/\/$/, "") || "/";
+    var method = request.method.toUpperCase();
 
     /* CORS preflight */
-    if (method === "OPTIONS")
+    if (method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS });
+    }
+
+    /* ── GET /health ──────────────────────────────────────── */
+    if (path === "/health") {
+      return json({
+        ok: true,
+        owner: env.GITHUB_OWNER || "(chưa đặt)",
+        repo: env.GITHUB_REPO || "(chưa đặt)",
+        branch: env.GITHUB_BRANCH || "main",
+        token: env.GITHUB_TOKEN ? "da dat" : "chua dat",
+      });
+    }
 
     /* ── GET /folders ─────────────────────────────────────── */
     if (method === "GET" && path === "/folders") {
       try {
-        const branch = env.GITHUB_BRANCH || "main";
-
-        /* Try docs/media first, then docs, then root */
-        const tryPaths = ["docs/media", "docs", ""];
+        var branch = env.GITHUB_BRANCH || "main";
         var folders = [];
 
+        /* Try docs/media → docs → root */
+        var tryPaths = ["docs/media", "docs", ""];
         for (var pi = 0; pi < tryPaths.length; pi++) {
           var tryPath = tryPaths[pi];
           var apiPath =
             "/contents" + (tryPath ? "/" + tryPath : "") + "?ref=" + branch;
           try {
-            var { data } = await ghFetch(env, apiPath);
-            if (Array.isArray(data)) {
-              data.forEach(function (item) {
-                if (item.type === "dir") {
-                  folders.push(tryPath ? tryPath + "/" + item.name : item.name);
+            var fetched = await ghFetch(env, apiPath);
+            var items = fetched.data;
+            if (Array.isArray(items)) {
+              /* add base path itself first */
+              if (tryPath) folders.push(tryPath);
+              for (var k = 0; k < items.length; k++) {
+                if (items[k].type === "dir") {
+                  folders.push(
+                    tryPath ? tryPath + "/" + items[k].name : items[k].name,
+                  );
                 }
-              });
-              if (tryPath) folders.unshift(tryPath); /* add base dir itself */
+              }
               break;
             }
           } catch (_) {
@@ -125,24 +157,16 @@ export default {
       try {
         var body = await request.json();
         var name = (body.name || "").trim().replace(/^\/+|\/+$/g, "");
-        if (!name) return err("Thiếu tên folder");
+        if (!name) return err("Thieu ten folder");
 
         var branch = env.GITHUB_BRANCH || "main";
         var filePath = "/contents/" + name + "/.gitkeep";
-
-        /* Check if already exists */
-        var sha = null;
-        try {
-          var { data: existing } = await ghFetch(
-            env,
-            filePath + "?ref=" + branch,
-          );
-          if (existing && existing.sha) sha = existing.sha;
-        } catch (_) {}
+        var sha = await getFileSha(env, filePath);
 
         var putBody = {
           message: "Create folder " + name + " [MyPictures]",
-          content: "",
+          content: btoa(" "),
+          /* space char — GitHub rejects empty content */
           branch: branch,
         };
         if (sha) putBody.sha = sha;
@@ -164,45 +188,32 @@ export default {
           .replace(/^\/+|\/+$/g, "");
         var branch = env.GITHUB_BRANCH || "main";
 
-        if (!file || typeof file === "string") return err("Thiếu file");
-        if (!folder) return err("Thiếu folder");
+        if (!file || typeof file === "string") return err("Thieu file");
+        if (!folder) return err("Thieu folder");
 
-        /* Convert file to base64 */
+        /* Safe base64 conversion */
         var arrayBuf = await file.arrayBuffer();
-        var bytes = new Uint8Array(arrayBuf);
-        var binary = "";
-        for (var i = 0; i < bytes.length; i++)
-          binary += String.fromCharCode(bytes[i]);
-        var b64 = btoa(binary);
+        var b64 = arrayBufferToBase64(arrayBuf);
 
         var fileName = file.name;
         var filePath = "/contents/" + folder + "/" + fileName;
-
-        /* Check if file already exists (need SHA for update) */
-        var sha = null;
-        try {
-          var { data: existFile } = await ghFetch(
-            env,
-            filePath + "?ref=" + branch,
-          );
-          if (existFile && existFile.sha) sha = existFile.sha;
-        } catch (_) {}
+        var sha = await getFileSha(env, filePath);
 
         var putBody = {
-          message: (sha ? "Update " : "Upload ") + fileName + " via MyPictures",
+          message: (sha ? "Update " : "Upload ") + fileName + " [MyPictures]",
           content: b64,
           branch: branch,
         };
         if (sha) putBody.sha = sha;
 
-        var { data: result } = await ghFetch(env, filePath, "PUT", putBody);
+        var result = await ghFetch(env, filePath, "PUT", putBody);
 
         return json({
           ok: true,
           filename: fileName,
-          url: result.content ? result.content.html_url : "",
-          raw_url: result.content ? result.content.download_url : "",
-          sha: result.content ? result.content.sha : "",
+          url: result.data.content ? result.data.content.html_url : "",
+          raw_url: result.data.content ? result.data.content.download_url : "",
+          sha: result.data.content ? result.data.content.sha : "",
         });
       } catch (e) {
         return err(e.message, 500);
@@ -216,7 +227,7 @@ export default {
         var imageDataUrl = body.image_data_url || "";
         var filename = body.filename || "";
 
-        if (!imageDataUrl) return err("Thiếu image_data_url");
+        if (!imageDataUrl) return err("Thieu image_data_url");
 
         var base64Image = imageDataUrl.split(",")[1] || imageDataUrl;
         var mediaType =
@@ -247,8 +258,8 @@ export default {
                   {
                     type: "text",
                     text:
-                      "Mô tả ngắn gọn bức ảnh này bằng tiếng Việt (1-2 câu)." +
-                      (filename ? " Tên file: " + filename : ""),
+                      "Mo ta ngan gon buc anh nay bang tieng Viet (1-2 cau)." +
+                      (filename ? " Ten file: " + filename : ""),
                   },
                 ],
               },
@@ -262,23 +273,12 @@ export default {
           claudeData.content[0] &&
           claudeData.content[0].text
             ? claudeData.content[0].text.trim()
-            : "Không có mô tả.";
+            : "Khong co mo ta.";
 
-        return json({ description });
+        return json({ description: description });
       } catch (e) {
         return err(e.message, 500);
       }
-    }
-
-    /* ── GET /health ─────────────────────────────────────── */
-    if (path === "/health") {
-      return json({
-        ok: true,
-        owner: env.GITHUB_OWNER || "(chưa đặt)",
-        repo: env.GITHUB_REPO || "(chưa đặt)",
-        branch: env.GITHUB_BRANCH || "main",
-        token: env.GITHUB_TOKEN ? "✅ đã đặt" : "❌ chưa đặt",
-      });
     }
 
     return new Response("Not found", { status: 404, headers: CORS });

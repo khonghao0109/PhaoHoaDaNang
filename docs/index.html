@@ -79,52 +79,25 @@
           </div>
         </div>
 
-        <!-- Tab GitHub -->
+        <!-- Tab GitHub (via Cloudflare Worker proxy) -->
         <div id="tabServer" class="upload-tab-content" hidden>
-          <!-- GitHub config -->
+          <!-- Worker config -->
           <div class="server-config">
             <div class="server-config-row">
-              <span class="server-label">👤 Owner:</span>
+              <span class="server-label">⚡ Worker URL:</span>
               <input
-                id="ghOwner"
-                class="server-input server-input-sm"
-                placeholder="khonghao0109"
-              />
-              <span class="server-label">📦 Repo:</span>
-              <input
-                id="ghRepo"
-                class="server-input server-input-sm"
-                placeholder="PhaoHoaDaNang"
-              />
-              <span class="server-label">🌿 Branch:</span>
-              <input
-                id="ghBranch"
-                class="server-input server-input-xs"
-                placeholder="main"
-                value="main"
-              />
-            </div>
-            <div class="server-config-row server-config-row-mt">
-              <span class="server-label">🔑 Token:</span>
-              <input
-                id="ghToken"
+                id="ghWorkerUrl"
                 class="server-input"
-                type="password"
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx  (cần quyền repo)"
+                placeholder="https://mypictures-worker.your-name.workers.dev"
               />
               <button class="server-btn" id="btnSaveGh">💾 Lưu</button>
               <button class="server-btn" id="btnTestGh">🔌 Kiểm tra</button>
             </div>
             <div class="server-status" id="serverStatus"></div>
             <div class="server-hint">
-              💡 Tạo token tại
-              <a
-                href="https://github.com/settings/tokens/new?scopes=repo"
-                target="_blank"
-                rel="noopener"
-                >github.com/settings/tokens</a
-              >
-              — cần tick quyền <code>repo</code>
+              💡 Token GitHub được lưu bí mật trong Worker — trình duyệt
+              <strong>không bao giờ biết token</strong>. Xem hướng dẫn setup bên
+              dưới.
             </div>
           </div>
 
@@ -142,10 +115,10 @@
               <input
                 id="newFolderName"
                 class="server-input server-input-sm"
-                placeholder="docs/media/TenFolder"
+                placeholder="docs/media/TenAlbum"
               />
               <button class="server-btn server-btn-accent" id="btnCreateFolder">
-                ➕ Tạo folder
+                ➕ Tạo
               </button>
             </div>
           </div>
@@ -163,7 +136,9 @@
                   chọn file
                 </button>
               </div>
-              <div class="drop-accept">Mỗi file được commit thẳng vào repo</div>
+              <div class="drop-accept">
+                File được commit thẳng vào repo — không cần token ở trình duyệt
+              </div>
             </div>
           </div>
           <input
@@ -175,6 +150,61 @@
           />
 
           <div id="serverUploadQueue" class="server-queue" hidden></div>
+
+          <!-- Setup guide -->
+          <details class="setup-guide">
+            <summary>📖 Hướng dẫn setup Worker (click để mở)</summary>
+            <div class="setup-guide-body">
+              <div class="setup-step">
+                <span class="setup-num">1</span>
+                <div>
+                  <strong>Tạo Fine-grained PAT trên GitHub</strong><br />
+                  Vào
+                  <a
+                    href="https://github.com/settings/tokens?type=beta"
+                    target="_blank"
+                    rel="noopener"
+                    >github.com/settings/tokens</a
+                  >
+                  → New fine-grained token → chọn repo → tick
+                  <code>Contents: Read &amp; Write</code> → Generate.
+                  <em>Không cần full "repo" scope.</em>
+                </div>
+              </div>
+              <div class="setup-step">
+                <span class="setup-num">2</span>
+                <div>
+                  <strong>Deploy Cloudflare Worker</strong><br />
+                  Copy file <code>src/worker.js</code> vào project Worker, chạy:
+                  <pre class="setup-code">wrangler deploy</pre>
+                </div>
+              </div>
+              <div class="setup-step">
+                <span class="setup-num">3</span>
+                <div>
+                  <strong>Đặt secrets (chạy lần lượt)</strong><br />
+                  <pre class="setup-code">
+wrangler secret put GITHUB_TOKEN
+wrangler secret put GITHUB_OWNER
+wrangler secret put GITHUB_REPO
+wrangler secret put GITHUB_BRANCH</pre
+                  >
+                  Nhập giá trị khi được hỏi. Token
+                  <strong>không bao giờ lộ ra ngoài.</strong>
+                </div>
+              </div>
+              <div class="setup-step">
+                <span class="setup-num">4</span>
+                <div>
+                  <strong
+                    >Dán Worker URL vào ô trên và nhấn Lưu → Kiểm tra</strong
+                  ><br />
+                  URL có dạng:
+                  <code>https://mypictures-worker.ten-ban.workers.dev</code>
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -189,6 +219,15 @@
           <div class="lb-headtext">
             <div class="lb-title" id="lbCaption"></div>
             <div class="lb-desc" id="lbDesc"></div>
+          </div>
+          <div class="lb-nav">
+            <button class="lb-nav-btn" id="lbPrev" aria-label="Trước">
+              &#8592;
+            </button>
+            <span class="lb-counter" id="lbCounter"></span>
+            <button class="lb-nav-btn" id="lbNext" aria-label="Sau">
+              &#8594;
+            </button>
           </div>
           <button class="lb-close" id="lbClose" aria-label="Đóng">✕</button>
         </div>

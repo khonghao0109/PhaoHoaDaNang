@@ -118,6 +118,9 @@ var dropZone = document.getElementById("dropZone");
  * ─────────────────────────────────────────────────────────────── */
 let currentSrc = "";
 let currentIsVideo = false;
+/* Navigation: flat list of all { src, title } openable in the current page */
+var mediaList = [];
+var mediaIndex = -1;
 
 /* Image editor */
 const imgEl = new Image();
@@ -201,13 +204,49 @@ function hideProgress() {
 /* ───────────────────────────────────────────────────────────────
  *  LIGHTBOX OPEN / CLOSE
  * ─────────────────────────────────────────────────────────────── */
-function openLightbox(src, title) {
+function openLightbox(src, title, skipListRebuild) {
   /* ── Pause every video currently playing on the page ── */
   document.querySelectorAll("video").forEach(function (v) {
     if (v !== videoEl && !v.paused) {
       v.pause();
     }
   });
+
+  /* ── Build / update the flat media list for prev-next nav ── */
+  if (!skipListRebuild) {
+    mediaList = [];
+    mediaIndex = -1;
+    /* Collect all clickable images & videos visible on page */
+    document
+      .querySelectorAll(".card img[data-src], .card img")
+      .forEach(function (img) {
+        var s = img.dataset.src || img.src;
+        if (!s || s.startsWith("data:")) return;
+        mediaList.push({ src: s, title: img.alt || "" });
+      });
+    document.querySelectorAll(".ratio video").forEach(function (v) {
+      var s =
+        v.src ||
+        (v.querySelector("source") && v.querySelector("source").src) ||
+        "";
+      if (!s) return;
+      mediaList.push({ src: s, title: "Video — " + s.split("/").pop() });
+    });
+    /* Find current index */
+    mediaIndex = mediaList.findIndex(function (m) {
+      return m.src === src;
+    });
+    if (mediaIndex === -1 && mediaList.length) {
+      /* Not in list (e.g. local upload) — add it */
+      mediaList.push({ src: src, title: title || "" });
+      mediaIndex = mediaList.length - 1;
+    }
+  } else {
+    /* Just update index after nav */
+    mediaIndex = mediaList.findIndex(function (m) {
+      return m.src === src;
+    });
+  }
 
   currentSrc = src;
   currentIsVideo = isVid(src);
@@ -288,6 +327,7 @@ function openLightbox(src, title) {
 
   lightbox.classList.add("open");
   lightbox.setAttribute("aria-hidden", "false");
+  updateNavUI();
 }
 
 function closeLightbox() {
@@ -313,10 +353,53 @@ function closeLightbox() {
 }
 
 lbClose.addEventListener("click", closeLightbox);
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeLightbox();
+
+/* Prev / Next navigation */
+var lbPrev = document.getElementById("lbPrev");
+var lbNext = document.getElementById("lbNext");
+var lbCounter = document.getElementById("lbCounter");
+
+function updateNavUI() {
+  if (!lbPrev || !lbNext || !lbCounter) return;
+  lbPrev.disabled = mediaIndex <= 0;
+  lbNext.disabled = mediaIndex >= mediaList.length - 1;
+  lbCounter.textContent = mediaList.length
+    ? mediaIndex + 1 + " / " + mediaList.length
+    : "";
+}
+
+function navTo(idx) {
+  if (idx < 0 || idx >= mediaList.length) return;
+  mediaIndex = idx;
+  var item = mediaList[idx];
+  openLightbox(item.src, item.title, true /* skipListRebuild */);
+}
+
+if (lbPrev)
+  lbPrev.addEventListener("click", function () {
+    navTo(mediaIndex - 1);
+  });
+if (lbNext)
+  lbNext.addEventListener("click", function () {
+    navTo(mediaIndex + 1);
+  });
+
+document.addEventListener("keydown", function (e) {
+  if (!lightbox.classList.contains("open")) return;
+  if (e.key === "Escape") {
+    closeLightbox();
+    return;
+  }
+  if (e.key === "ArrowLeft") {
+    navTo(mediaIndex - 1);
+    return;
+  }
+  if (e.key === "ArrowRight") {
+    navTo(mediaIndex + 1);
+    return;
+  }
 });
-lightbox.addEventListener("click", (e) => {
+lightbox.addEventListener("click", function (e) {
   if (e.target === lightbox) closeLightbox();
 });
 
@@ -1373,7 +1456,10 @@ function renderLocalUploads() {
   art.className = "album";
   art.dataset.category = "__uploads__";
   art.dataset.keywords = "upload local";
-  art.innerHTML = `<div class="album-head"><h2>📁 Ảnh &amp; Video của tôi <span class="album-badge">${total} file</span></h2><p style="color:var(--muted);font-size:0.88rem">Lưu tạm trong trình duyệt, không lên server.</p></div>`;
+  art.innerHTML =
+    "<div class='album-head'><h2>📁 Ảnh &amp; Video của tôi <span class='album-badge'>" +
+    total +
+    " file</span></h2><p class='album-head-sub'>Lưu tạm trong trình duyệt, không lên server.</p></div>";
 
   const actions = document.createElement("div");
   actions.className = "album-actions";
@@ -1409,30 +1495,34 @@ function renderLocalUploads() {
     const vw = document.createElement("div");
     vw.className = "video";
     vw.innerHTML = `<div class="video-title">🎥 Video (${localUploads.videos.length})</div>`;
-    localUploads.videos.forEach((item, idx) => {
-      const row = document.createElement("div");
-      row.style.cssText =
-        "display:flex;align-items:center;gap:10px;width:min(960px,100%);margin-bottom:6px;";
-      const ratio = document.createElement("div");
+    localUploads.videos.forEach(function (item, idx) {
+      var row = document.createElement("div");
+      row.className = "upload-video-row";
+      var ratio = document.createElement("div");
       ratio.className = "ratio";
-      ratio.style.flex = "1";
-      const v = document.createElement("video");
+      var v = document.createElement("video");
       v.controls = true;
       v.preload = "metadata";
       v.playsInline = true;
       v.src = item.url;
-      v.addEventListener("click", () => openLightbox(item.url, item.name));
+      (function (s, n) {
+        v.addEventListener("click", function () {
+          openLightbox(s, n);
+        });
+      })(item.url, item.name);
       ratio.appendChild(v);
-      const rm = document.createElement("button");
+      var rm = document.createElement("button");
       rm.className = "album-action-btn danger";
-      rm.style.flexShrink = "0";
       rm.textContent = "✕ Xóa";
-      rm.addEventListener("click", () => removeLocalVideo(idx));
+      (function (i2) {
+        rm.addEventListener("click", function () {
+          removeLocalVideo(i2);
+        });
+      })(idx);
       row.append(ratio, rm);
       vw.appendChild(row);
-      const nm = document.createElement("div");
-      nm.style.cssText =
-        "font-size:0.8rem;color:var(--muted);width:min(960px,100%);margin-bottom:10px;";
+      var nm = document.createElement("div");
+      nm.className = "upload-video-name";
       nm.textContent = item.name;
       vw.appendChild(nm);
     });
@@ -1445,17 +1535,18 @@ function renderLocalUploads() {
 }
 
 /* ───────────────────────────────────────────────────────────────
- *  GITHUB UPLOAD
- *  Uses GitHub Contents API:
- *    GET  /repos/{owner}/{repo}/contents/{path}  → list folder
- *    PUT  /repos/{owner}/{repo}/contents/{path}  → create/update file
+ *  GITHUB UPLOAD  (via Cloudflare Worker proxy)
+ *  Token is stored as a Worker secret — NEVER in the browser.
+ *
+ *  Worker endpoints (all on workerUrl):
+ *    GET  /folders  -> { folders: ["docs/media", ...] }
+ *    POST /folders  -> { ok, folder }   body: { name }
+ *    POST /upload   -> { ok, url, raw_url }  multipart: file, folder
+ *    GET  /health   -> { ok, owner, repo, branch, token }
  * ─────────────────────────────────────────────────────────────── */
 
-/* ── DOM refs for GitHub tab ── */
-var ghOwner = document.getElementById("ghOwner");
-var ghRepo = document.getElementById("ghRepo");
-var ghBranch = document.getElementById("ghBranch");
-var ghToken = document.getElementById("ghToken");
+/* ── DOM refs ── */
+var ghWorkerUrl = document.getElementById("ghWorkerUrl");
 var btnSaveGh = document.getElementById("btnSaveGh");
 var btnTestGh = document.getElementById("btnTestGh");
 var serverStatus = document.getElementById("serverStatus");
@@ -1469,147 +1560,89 @@ var btnBrowseServer = document.getElementById("btnBrowseServer");
 var serverUploadQueue = document.getElementById("serverUploadQueue");
 
 /* ── Config helpers ── */
-function getGhConfig() {
-  return {
-    owner: localStorage.getItem("gh_owner") || "",
-    repo: localStorage.getItem("gh_repo") || "",
-    branch: localStorage.getItem("gh_branch") || "main",
-    token: localStorage.getItem("gh_token") || "",
-  };
+function getWorkerUrl() {
+  return (localStorage.getItem("mp_worker_url") || "")
+    .trim()
+    .replace(/\/$/, "");
 }
 
 function setGhStatus(msg, type) {
+  if (!serverStatus) return;
   serverStatus.textContent = msg;
   serverStatus.className = "server-status " + (type || "");
 }
 
-/* ── Load saved config ── */
+/* ── Load saved worker URL ── */
 (function () {
-  var cfg = getGhConfig();
-  if (ghOwner && cfg.owner) ghOwner.value = cfg.owner;
-  if (ghRepo && cfg.repo) ghRepo.value = cfg.repo;
-  if (ghBranch && cfg.branch) ghBranch.value = cfg.branch;
-  if (ghToken && cfg.token) ghToken.value = cfg.token;
+  var saved = getWorkerUrl();
+  if (ghWorkerUrl && saved) ghWorkerUrl.value = saved;
 })();
 
 /* ── Save ── */
 if (btnSaveGh)
   btnSaveGh.addEventListener("click", function () {
-    localStorage.setItem("gh_owner", (ghOwner.value || "").trim());
-    localStorage.setItem("gh_repo", (ghRepo.value || "").trim());
-    localStorage.setItem("gh_branch", (ghBranch.value || "main").trim());
-    localStorage.setItem("gh_token", (ghToken.value || "").trim());
-    setGhStatus("✅ Đã lưu cấu hình!", "ok");
+    var url = (ghWorkerUrl ? ghWorkerUrl.value : "").trim().replace(/\/$/, "");
+    localStorage.setItem("mp_worker_url", url);
+    setGhStatus("Đa luu Worker URL!", "ok");
     setTimeout(function () {
       setGhStatus("");
     }, 2500);
   });
 
-/* ── GitHub API fetch wrapper ── */
-async function ghFetch(path, method, body) {
-  var cfg = getGhConfig();
-  if (!cfg.token) throw new Error("Chưa nhập GitHub Token");
-  var opts = {
-    method: method || "GET",
-    headers: {
-      Authorization: "token " + cfg.token,
-      Accept: "application/vnd.github.v3+json",
-      "Content-Type": "application/json",
-    },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  var url = "https://api.github.com" + path;
-  var res = await fetch(url, opts);
-  if (!res.ok) {
-    var err = await res.json().catch(function () {
-      return {};
-    });
-    throw new Error(err.message || "HTTP " + res.status);
-  }
-  return res.json();
-}
-
-/* ── Test connection ── */
+/* ── Test connection via /health ── */
 if (btnTestGh)
   btnTestGh.addEventListener("click", async function () {
-    var cfg = getGhConfig();
-    if (!cfg.owner || !cfg.repo) {
-      setGhStatus("❌ Nhập Owner và Repo trước", "err");
+    var wUrl = getWorkerUrl();
+    if (!wUrl) {
+      setGhStatus("Nhap Worker URL truoc roi nhan Luu", "err");
       return;
     }
-    setGhStatus("🔌 Đang kiểm tra…");
+    setGhStatus("Dang kiem tra ket noi...");
     try {
-      var data = await ghFetch("/repos/" + cfg.owner + "/" + cfg.repo);
+      var res = await fetch(wUrl + "/health");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var data = await res.json();
+      if (data.error) throw new Error(data.error);
       setGhStatus(
-        "✅ Kết nối OK — " + data.full_name + " (" + data.default_branch + ")",
+        "Ket noi OK: " +
+          data.owner +
+          "/" +
+          data.repo +
+          " (" +
+          data.branch +
+          ")  token: " +
+          data.token,
         "ok",
       );
       fetchGhFolders();
     } catch (e) {
-      setGhStatus("❌ " + e.message, "err");
+      setGhStatus("Loi: " + e.message, "err");
     }
   });
 
-/* ── List folders (top-level + docs/media) ── */
+/* ── Fetch folders from Worker ── */
 async function fetchGhFolders() {
-  var cfg = getGhConfig();
-  if (!cfg.owner || !cfg.repo || !cfg.token) return;
-  setGhStatus("🔄 Đang tải danh sách folder…");
+  var wUrl = getWorkerUrl();
+  if (!wUrl) return;
+  setGhStatus("Dang tai danh sach folder...");
   try {
-    /* Try docs/media first (common pattern for this project) */
-    var folders = [];
-    var tryPaths = ["docs/media", "media", ""];
-    var found = false;
-    for (var pi = 0; pi < tryPaths.length; pi++) {
-      var tryPath = tryPaths[pi];
-      try {
-        var path =
-          "/repos/" +
-          cfg.owner +
-          "/" +
-          cfg.repo +
-          "/contents" +
-          (tryPath ? "/" + tryPath : "");
-        var items = await ghFetch(path + "?ref=" + cfg.branch);
-        if (Array.isArray(items)) {
-          items.forEach(function (item) {
-            if (item.type === "dir") {
-              folders.push(tryPath ? tryPath + "/" + item.name : item.name);
-            }
-          });
-          /* Also add the base path itself as an upload target */
-          if (tryPath) folders.unshift(tryPath);
-          found = true;
-          break;
-        }
-      } catch (_) {
-        /* try next path */
-      }
-    }
-    if (!found || folders.length === 0) {
-      /* fallback: show root dirs */
-      var root = await ghFetch(
-        "/repos/" + cfg.owner + "/" + cfg.repo + "/contents?ref=" + cfg.branch,
-      );
-      if (Array.isArray(root)) {
-        root.forEach(function (item) {
-          if (item.type === "dir") folders.push(item.name);
-        });
-      }
-    }
-    populateGhFolders(folders);
-    setGhStatus("✅ Đã tải " + folders.length + " folder", "ok");
+    var res = await fetch(wUrl + "/folders");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    populateGhFolders(data.folders || []);
+    setGhStatus((data.folders || []).length + " folder", "ok");
     setTimeout(function () {
       setGhStatus("");
     }, 2000);
   } catch (e) {
-    setGhStatus("❌ " + e.message, "err");
+    setGhStatus("Loi: " + e.message, "err");
   }
 }
 
 function populateGhFolders(folders) {
   if (!folderSelect) return;
-  folderSelect.innerHTML = "<option value=''>-- Chọn folder --</option>";
+  folderSelect.innerHTML = "<option value=''>-- Chon folder --</option>";
   folders.forEach(function (f) {
     var o = document.createElement("option");
     o.value = f;
@@ -1621,60 +1654,43 @@ function populateGhFolders(folders) {
 if (btnRefreshFolders)
   btnRefreshFolders.addEventListener("click", fetchGhFolders);
 
-/* ── Create folder (by pushing .gitkeep) ── */
+/* ── Create folder via Worker ── */
 if (btnCreateFolder)
   btnCreateFolder.addEventListener("click", async function () {
-    var name = newFolderName.value.trim();
+    var name = (newFolderName ? newFolderName.value : "")
+      .trim()
+      .replace(/^\/+|\/+$/g, "");
     if (!name) {
-      setGhStatus("❌ Nhập tên folder trước", "err");
+      setGhStatus("Nhap ten folder truoc", "err");
       return;
     }
-    /* Normalise: no leading/trailing slash */
-    name = name.replace(/^\/+|\/+$/g, "");
-    var cfg = getGhConfig();
-    if (!cfg.owner || !cfg.repo) {
-      setGhStatus("❌ Cấu hình repo trước", "err");
+    var wUrl = getWorkerUrl();
+    if (!wUrl) {
+      setGhStatus("Cau hinh Worker URL truoc", "err");
       return;
     }
-    setGhStatus("➕ Đang tạo folder…");
+    setGhStatus("Dang tao folder...");
     try {
-      var filePath = name + "/.gitkeep";
-      await ghFetch(
-        "/repos/" + cfg.owner + "/" + cfg.repo + "/contents/" + filePath,
-        "PUT",
-        {
-          message: "Create folder " + name + " via MyPictures",
-          content: "",
-          /* empty file, base64 of "" */
-          branch: cfg.branch,
-        },
-      );
-      setGhStatus('✅ Đã tạo folder "' + name + '"!', "ok");
-      newFolderName.value = "";
+      var res = await fetch(wUrl + "/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name }),
+      });
+      var data = await res.json();
+      if (!res.ok || data.error)
+        throw new Error(data.error || "HTTP " + res.status);
+      setGhStatus("Da tao folder: " + name, "ok");
+      if (newFolderName) newFolderName.value = "";
       fetchGhFolders();
     } catch (e) {
-      setGhStatus("❌ " + e.message, "err");
+      setGhStatus("Loi: " + e.message, "err");
     }
   });
 
-/* ── File → base64 ── */
-function fileToBase64(file) {
-  return new Promise(function (resolve, reject) {
-    var reader = new FileReader();
-    reader.onload = function () {
-      resolve(reader.result.split(",")[1]);
-    };
-    reader.onerror = function () {
-      reject(new Error("Đọc file thất bại"));
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-/* ── Upload files to GitHub ── */
+/* ── Wire up drop zone and file input ── */
 if (btnBrowseServer)
   btnBrowseServer.addEventListener("click", function () {
-    uploadServerInput.click();
+    if (uploadServerInput) uploadServerInput.click();
   });
 if (uploadServerInput)
   uploadServerInput.addEventListener("change", function () {
@@ -1695,32 +1711,31 @@ if (dropZoneServer) {
   });
 }
 
+/* ── Upload files via Worker ── */
 async function handleGhUpload(fileList) {
   if (!fileList || !fileList.length) return;
-  var cfg = getGhConfig();
-  if (!cfg.token) {
-    setGhStatus("❌ Nhập GitHub Token trước", "err");
-    return;
-  }
-  if (!cfg.owner || !cfg.repo) {
-    setGhStatus("❌ Cấu hình Owner/Repo trước", "err");
+  var wUrl = getWorkerUrl();
+  if (!wUrl) {
+    setGhStatus("Nhap Worker URL truoc roi nhan Luu", "err");
     return;
   }
   var folder = folderSelect ? folderSelect.value : "";
   if (!folder) {
-    setGhStatus("❌ Chọn folder đích trước", "err");
+    setGhStatus("Chon folder dich truoc", "err");
     return;
   }
 
-  serverUploadQueue.hidden = false;
-  serverUploadQueue.innerHTML = "";
+  if (serverUploadQueue) {
+    serverUploadQueue.hidden = false;
+    serverUploadQueue.innerHTML = "";
+  }
 
   for (var i = 0; i < fileList.length; i++) {
     var f = fileList[i];
-    /* create queue item */
+    var qid = "q_" + Date.now() + "_" + i;
+
     var itemEl = document.createElement("div");
     itemEl.className = "queue-item";
-    var qid = "q_" + Date.now() + "_" + i;
     itemEl.innerHTML =
       "<span class='queue-item-name' title='" +
       f.name +
@@ -1732,61 +1747,65 @@ async function handleGhUpload(fileList) {
       "'></div></div>" +
       "<span class='queue-item-status' id='st_" +
       qid +
-      "'>⏳ Đang đọc…</span>";
-    serverUploadQueue.appendChild(itemEl);
+      "'>Dang upload...</span>";
+    if (serverUploadQueue) serverUploadQueue.appendChild(itemEl);
 
     var stEl = document.getElementById("st_" + qid);
     var pbEl = document.getElementById("pb_" + qid);
 
     try {
-      /* 1. read as base64 */
-      if (pbEl) pbEl.style.width = "20%";
-      var b64 = await fileToBase64(f);
-      if (pbEl) pbEl.style.width = "45%";
-      if (stEl) stEl.textContent = "📤 Đang push…";
+      if (pbEl) pbEl.style.width = "15%";
 
-      /* 2. check if file already exists (need SHA to update) */
-      var filePath = folder + "/" + f.name;
-      var apiPath =
-        "/repos/" + cfg.owner + "/" + cfg.repo + "/contents/" + filePath;
-      var sha = null;
-      try {
-        var existing = await ghFetch(apiPath + "?ref=" + cfg.branch);
-        if (existing && existing.sha) sha = existing.sha;
-      } catch (_) {
-        /* file doesn't exist, sha stays null */
-      }
+      var fd = new FormData();
+      fd.append("file", f);
+      fd.append("folder", folder);
 
-      if (pbEl) pbEl.style.width = "65%";
+      var result = await new Promise(function (resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", wUrl + "/upload");
+        xhr.upload.onprogress = function (ev) {
+          if (ev.lengthComputable && pbEl) {
+            pbEl.style.width = Math.round((ev.loaded / ev.total) * 90) + "%";
+          }
+        };
+        xhr.onload = function () {
+          var data;
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch (_) {
+            data = {};
+          }
+          if (xhr.status >= 200 && xhr.status < 300 && !data.error) {
+            if (pbEl) pbEl.style.width = "100%";
+            resolve(data);
+          } else {
+            reject(new Error(data.error || "HTTP " + xhr.status));
+          }
+        };
+        xhr.onerror = function () {
+          reject(new Error("Network error"));
+        };
+        xhr.send(fd);
+      });
 
-      /* 3. PUT to GitHub */
-      var body = {
-        message: (sha ? "Update " : "Upload ") + f.name + " via MyPictures",
-        content: b64,
-        branch: cfg.branch,
-      };
-      if (sha) body.sha = sha;
-
-      var result = await ghFetch(apiPath, "PUT", body);
-      if (pbEl) pbEl.style.width = "100%";
-      var fileUrl =
-        result && result.content && result.content.html_url
-          ? result.content.html_url
-          : "#";
       if (stEl) {
-        stEl.innerHTML =
-          "<a href='" +
-          fileUrl +
-          "' target='_blank' rel='noopener'>✅ Xem trên GitHub</a>";
+        if (result.url) {
+          stEl.innerHTML =
+            "<a href='" +
+            result.url +
+            "' target='_blank' rel='noopener'>Xem tren GitHub</a>";
+        } else {
+          stEl.textContent = "Upload thanh cong!";
+        }
         stEl.className = "queue-item-status ok";
       }
     } catch (e) {
       if (stEl) {
-        stEl.textContent = "❌ " + e.message;
+        stEl.textContent = "Loi: " + e.message;
         stEl.className = "queue-item-status err";
       }
       if (pbEl) {
-        pbEl.style.background = "#ff6060";
+        pbEl.style.background = "rgba(255,80,80,0.5)";
       }
     }
   }
@@ -1868,7 +1887,7 @@ function renderAlbum(album) {
       ratio.appendChild(v);
       vw.appendChild(ratio);
       const link = document.createElement("div");
-      link.style.marginTop = "8px";
+      link.className = "video-open-link";
       link.innerHTML = `<a href="${src}" target="_blank" rel="noopener noreferrer">↗ Mở / tải video</a>`;
       vw.appendChild(link);
     });
@@ -1921,9 +1940,8 @@ async function init() {
     albumsEl.innerHTML = `<div class="empty-state">⚠️ Không tải được manifest.json: ${e.message}</div>`;
   }
   applyFilters();
-  /* Pre-load GitHub folders if configured */
-  if (getGhConfig().token && getGhConfig().owner)
-    fetchGhFolders().catch(function () {});
+  /* Pre-load GitHub folders if Worker URL is configured */
+  if (getWorkerUrl()) fetchGhFolders().catch(function () {});
 }
 
 init();
