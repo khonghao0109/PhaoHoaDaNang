@@ -1,6 +1,70 @@
 {
   "albums": [
     {
+      "folder": "DIFF2026_comingsoon",
+      "title": "DIFF2026_comingsoon",
+      "description": "",
+      "images": [
+        "./media/DIFF2026_comingsoon/518304946_1044599824497422_8041348808363293393_n.jpg",
+        "./media/DIFF2026_comingsoon/518305176_1044599744497430_7854022038529403965_n.jpg",
+        "./media/DIFF2026_comingsoon/518313622_1044599857830752_8895878912506613036_n.jpg",
+        "./media/DIFF2026_comingsoon/518381025_1044600151164056_2194526475992932891_n.jpg",
+        "./media/DIFF2026_comingsoon/519490634_1044600044497400_8119633481597847071_n.jpg",
+        "./media/DIFF2026_comingsoon/652971401_1237091771914892_4408287794335454102_n.jpg",
+        "./media/DIFF2026_comingsoon/653154187_1237089871915082_4854862231167843643_n.jpg",
+        "./media/DIFF2026_comingsoon/653534426_1237091948581541_3671992512750689420_n.jpg",
+        "./media/DIFF2026_comingsoon/653713634_1237092065248196_7048604966828686654_n.jpg",
+        "./media/DIFF2026_comingsoon/653812769_1237091841914885_5802000521076939657_n.jpg",
+        "./media/DIFF2026_comingsoon/653950442_1237089808581755_3622380434412170293_n.jpg",
+        "./media/DIFF2026_comingsoon/653984252_1237091991914870_5974717160601975477_n.jpg",
+        "./media/DIFF2026_comingsoon/654210013_1237091968581539_1031533925648874341_n.jpg",
+        "./media/DIFF2026_comingsoon/655262613_1237089845248418_2755487609505652015_n.jpg"
+      ],
+      "videos": [],
+      "embeds": []
+    },
+    {
+      "folder": "DIFF 2024",
+      "title": "DIFF 2024",
+      "description": "",
+      "images": [
+        "./media/DIFF 2024/America.jpg",
+        "./media/DIFF 2024/Champion2024_PhanLan.jpg",
+        "./media/DIFF 2024/DazzlingDaNang_TQ.jpg",
+        "./media/DIFF 2024/PhanLan.jpg",
+        "./media/DIFF 2024/TrungQuoc.jpg"
+      ],
+      "videos": [],
+      "embeds": []
+    },
+    {
+      "folder": "DIFF 2025",
+      "title": "DIFF 2025",
+      "description": "",
+      "images": [
+        "./media/DIFF 2025/DN Firework_VN1.jpg",
+        "./media/DIFF 2025/Faseecom_HanQuoc.jpg",
+        "./media/DIFF 2025/Jiangxi-Yanfeng_TQ.jpg",
+        "./media/DIFF 2025/JoHoPyro_PhanLan.jpg",
+        "./media/DIFF 2025/Macedos-Pirotecnia_BDN.jpg",
+        "./media/DIFF 2025/MartarelloGroup_Italia.jpg",
+        "./media/DIFF 2025/Orion Fireworks_Canada.jpg",
+        "./media/DIFF 2025/Pyrotex-Fireworx_Anh.jpg",
+        "./media/DIFF 2025/SurexFirma Rodzinna_Ba Lan.jpg",
+        "./media/DIFF 2025/Top1DIF2025.jpg",
+        "./media/DIFF 2025/Z121-Vina Pyrotech_Việt Nam 2.jpg"
+      ],
+      "videos": [
+        "./media/DIFF 2025/FSave.com_Facebook_Media_004_1198433628836269v.mp4",
+        "./media/DIFF 2025/FSave.com_Facebook_Media_004_1238176048356053v.mp4",
+        "./media/DIFF 2025/FSave.com_Reel_Media_004_900490666297859v.mp4",
+        "./media/DIFF 2025/Video1-1.mp4",
+        "./media/DIFF 2025/Video2-1.mp4",
+        "./media/DIFF 2025/Video_DIFF2025.mp4"
+      ],
+      "embeds": []
+    },
+    {
       "folder": "PhaoHoaDHD_XIV",
       "title": "PhaoHoaDHD_XIV",
       "description": "",
