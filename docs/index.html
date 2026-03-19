@@ -81,24 +81,26 @@
 
         <!-- Tab GitHub (via Cloudflare Worker proxy) -->
         <div id="tabServer" class="upload-tab-content" hidden>
-          <!-- Worker config -->
+          <!-- Worker status bar — URL hardcoded, edit button to override -->
           <div class="server-config">
             <div class="server-config-row">
-              <span class="server-label">⚡ Worker URL:</span>
+              <span class="server-label">⚡ Worker:</span>
               <input
                 id="ghWorkerUrl"
-                class="server-input"
-                placeholder="https://mypictures-worker.your-name.workers.dev"
+                class="server-input server-input-worker"
+                readonly
               />
-              <button class="server-btn" id="btnSaveGh">💾 Lưu</button>
+              <button
+                class="server-btn server-btn-edit"
+                id="btnEditWorker"
+                title="Đổi Worker URL"
+              >
+                ✏️
+              </button>
+              <button class="server-btn" id="btnSaveGh" hidden>💾 Lưu</button>
               <button class="server-btn" id="btnTestGh">🔌 Kiểm tra</button>
             </div>
             <div class="server-status" id="serverStatus"></div>
-            <div class="server-hint">
-              💡 Token GitHub được lưu bí mật trong Worker — trình duyệt
-              <strong>không bao giờ biết token</strong>. Xem hướng dẫn setup bên
-              dưới.
-            </div>
           </div>
 
           <!-- Folder picker -->
@@ -151,9 +153,9 @@
 
           <div id="serverUploadQueue" class="server-queue" hidden></div>
 
-          <!-- Setup guide -->
+          <!-- Setup guide (collapsed by default) -->
           <details class="setup-guide">
-            <summary>📖 Hướng dẫn setup Worker (click để mở)</summary>
+            <summary>📖 Hướng dẫn setup Worker lần đầu (click để mở)</summary>
             <div class="setup-guide-body">
               <div class="setup-step">
                 <span class="setup-num">1</span>
@@ -168,39 +170,34 @@
                   >
                   → New fine-grained token → chọn repo → tick
                   <code>Contents: Read &amp; Write</code> → Generate.
-                  <em>Không cần full "repo" scope.</em>
                 </div>
               </div>
               <div class="setup-step">
                 <span class="setup-num">2</span>
                 <div>
                   <strong>Deploy Cloudflare Worker</strong><br />
-                  Copy file <code>src/worker.js</code> vào project Worker, chạy:
+                  Copy <code>src/worker.js</code> vào project, chạy:
                   <pre class="setup-code">wrangler deploy</pre>
                 </div>
               </div>
               <div class="setup-step">
                 <span class="setup-num">3</span>
                 <div>
-                  <strong>Đặt secrets (chạy lần lượt)</strong><br />
+                  <strong>Đặt secrets</strong><br />
                   <pre class="setup-code">
 wrangler secret put GITHUB_TOKEN
 wrangler secret put GITHUB_OWNER
 wrangler secret put GITHUB_REPO
 wrangler secret put GITHUB_BRANCH</pre
                   >
-                  Nhập giá trị khi được hỏi. Token
-                  <strong>không bao giờ lộ ra ngoài.</strong>
                 </div>
               </div>
               <div class="setup-step">
                 <span class="setup-num">4</span>
                 <div>
-                  <strong
-                    >Dán Worker URL vào ô trên và nhấn Lưu → Kiểm tra</strong
-                  ><br />
-                  URL có dạng:
-                  <code>https://mypictures-worker.ten-ban.workers.dev</code>
+                  <strong>Nhấn ✏️ để đổi Worker URL nếu cần</strong><br />
+                  URL mặc định đã được cấu hình sẵn trong code — chỉ cần mở tab
+                  GitHub, chọn folder và kéo thả file.
                 </div>
               </div>
             </div>

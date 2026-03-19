@@ -1366,6 +1366,11 @@ document.querySelectorAll(".upload-tab").forEach((tab) => {
     const which = tab.dataset.tab;
     document.getElementById("tabLocal").hidden = which !== "local";
     document.getElementById("tabServer").hidden = which !== "server";
+    /* Auto-load folders when switching to GitHub tab */
+    if (which === "server") {
+      var hasFolders = folderSelect && folderSelect.options.length > 1;
+      if (!hasFolders && getWorkerUrl()) fetchGhFolders();
+    }
   });
 });
 
@@ -1559,11 +1564,14 @@ var uploadServerInput = document.getElementById("uploadServerInput");
 var btnBrowseServer = document.getElementById("btnBrowseServer");
 var serverUploadQueue = document.getElementById("serverUploadQueue");
 
-/* ── Config helpers ── */
+/* ── Worker URL — hardcoded default, override via localStorage ── */
+var DEFAULT_WORKER_URL = "https://mypictures-describe.khonghao0109.workers.dev";
+
 function getWorkerUrl() {
-  return (localStorage.getItem("mp_worker_url") || "")
+  var saved = (localStorage.getItem("mp_worker_url") || "")
     .trim()
     .replace(/\/$/, "");
+  return saved || DEFAULT_WORKER_URL;
 }
 
 function setGhStatus(msg, type) {
@@ -1572,24 +1580,55 @@ function setGhStatus(msg, type) {
   serverStatus.className = "server-status " + (type || "");
 }
 
-/* ── Load saved worker URL ── */
+/* ── Pre-fill input with current URL ── */
 (function () {
-  var saved = getWorkerUrl();
-  if (ghWorkerUrl && saved) ghWorkerUrl.value = saved;
+  if (ghWorkerUrl) ghWorkerUrl.value = getWorkerUrl();
 })();
 
-/* ── Save ── */
+/* ── Save (nếu muốn đổi sang Worker khác) ── */
 if (btnSaveGh)
   btnSaveGh.addEventListener("click", function () {
     var url = (ghWorkerUrl ? ghWorkerUrl.value : "").trim().replace(/\/$/, "");
-    localStorage.setItem("mp_worker_url", url);
-    setGhStatus("Đa luu Worker URL!", "ok");
+    localStorage.setItem("mp_worker_url", url || DEFAULT_WORKER_URL);
+    /* lock input again */
+    if (ghWorkerUrl) {
+      ghWorkerUrl.readOnly = true;
+    }
+    if (btnSaveGh) {
+      btnSaveGh.hidden = true;
+    }
+    if (btnEditWorker) {
+      btnEditWorker.textContent = "✏️";
+      btnEditWorker.title = "Đổi Worker URL";
+    }
+    setGhStatus("Da luu!", "ok");
     setTimeout(function () {
       setGhStatus("");
-    }, 2500);
+    }, 2000);
   });
 
-/* ── Test connection via /health ── */
+/* ── Edit button: unlock input to change URL ── */
+var btnEditWorker = document.getElementById("btnEditWorker");
+if (btnEditWorker)
+  btnEditWorker.addEventListener("click", function () {
+    if (!ghWorkerUrl) return;
+    var isEditing = !ghWorkerUrl.readOnly;
+    if (isEditing) {
+      /* cancel edit — restore saved/default URL */
+      ghWorkerUrl.value = getWorkerUrl();
+      ghWorkerUrl.readOnly = true;
+      if (btnSaveGh) btnSaveGh.hidden = true;
+      btnEditWorker.textContent = "✏️";
+      btnEditWorker.title = "Đổi Worker URL";
+    } else {
+      ghWorkerUrl.readOnly = false;
+      ghWorkerUrl.focus();
+      ghWorkerUrl.select();
+      if (btnSaveGh) btnSaveGh.hidden = false;
+      btnEditWorker.textContent = "✕";
+      btnEditWorker.title = "Huỷ";
+    }
+  });
 if (btnTestGh)
   btnTestGh.addEventListener("click", async function () {
     var wUrl = getWorkerUrl();
