@@ -343,6 +343,10 @@ body {
   flex-wrap: wrap;
 }
 
+.server-config-row-mt {
+  margin-top: 8px;
+}
+
 .folder-manager {
   margin-bottom: 14px;
 }
@@ -367,7 +371,29 @@ body {
 }
 
 .server-input-sm {
-  flex: 0 0 160px;
+  flex: 0 0 150px;
+}
+
+.server-input-xs {
+  flex: 0 0 80px;
+}
+
+.server-hint {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.server-hint a {
+  color: var(--accent);
+}
+
+.server-hint code {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.78rem;
 }
 
 .server-status {

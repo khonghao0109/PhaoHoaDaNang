@@ -59,7 +59,7 @@
           <button class="upload-tab active" data-tab="local">
             💻 Từ máy tính
           </button>
-          <button class="upload-tab" data-tab="server">🌐 Lên Server</button>
+          <button class="upload-tab" data-tab="server">🐙 Lên GitHub</button>
         </div>
 
         <!-- Tab Local -->
@@ -79,41 +79,70 @@
           </div>
         </div>
 
-        <!-- Tab Server -->
+        <!-- Tab GitHub -->
         <div id="tabServer" class="upload-tab-content" hidden>
+          <!-- GitHub config -->
           <div class="server-config">
             <div class="server-config-row">
-              <span class="server-label">🔗 Server URL:</span>
+              <span class="server-label">👤 Owner:</span>
               <input
-                id="serverUrl"
-                class="server-input"
-                type="url"
-                placeholder="https://your-server.com/api"
-              />
-              <input
-                id="serverToken"
+                id="ghOwner"
                 class="server-input server-input-sm"
-                type="password"
-                placeholder="Token (tuỳ chọn)"
+                placeholder="khonghao0109"
               />
-              <button class="server-btn" id="btnSaveServer">💾 Lưu</button>
-              <button class="server-btn" id="btnTestServer">🔌 Kiểm tra</button>
+              <span class="server-label">📦 Repo:</span>
+              <input
+                id="ghRepo"
+                class="server-input server-input-sm"
+                placeholder="PhaoHoaDaNang"
+              />
+              <span class="server-label">🌿 Branch:</span>
+              <input
+                id="ghBranch"
+                class="server-input server-input-xs"
+                placeholder="main"
+                value="main"
+              />
+            </div>
+            <div class="server-config-row server-config-row-mt">
+              <span class="server-label">🔑 Token:</span>
+              <input
+                id="ghToken"
+                class="server-input"
+                type="password"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx  (cần quyền repo)"
+              />
+              <button class="server-btn" id="btnSaveGh">💾 Lưu</button>
+              <button class="server-btn" id="btnTestGh">🔌 Kiểm tra</button>
             </div>
             <div class="server-status" id="serverStatus"></div>
+            <div class="server-hint">
+              💡 Tạo token tại
+              <a
+                href="https://github.com/settings/tokens/new?scopes=repo"
+                target="_blank"
+                rel="noopener"
+                >github.com/settings/tokens</a
+              >
+              — cần tick quyền <code>repo</code>
+            </div>
           </div>
 
+          <!-- Folder picker -->
           <div class="folder-manager">
             <div class="folder-manager-row">
-              <span class="server-label">📁 Folder:</span>
+              <span class="server-label">📁 Folder đích:</span>
               <select id="folderSelect" class="folder-select">
                 <option value="">-- Chọn folder --</option>
               </select>
-              <button class="server-btn" id="btnRefreshFolders">🔄</button>
+              <button class="server-btn" id="btnRefreshFolders">
+                🔄 Làm mới
+              </button>
               <span class="server-label">Tạo mới:</span>
               <input
                 id="newFolderName"
                 class="server-input server-input-sm"
-                placeholder="Tên folder..."
+                placeholder="docs/media/TenFolder"
               />
               <button class="server-btn server-btn-accent" id="btnCreateFolder">
                 ➕ Tạo folder
@@ -121,16 +150,20 @@
             </div>
           </div>
 
+          <!-- Drop area -->
           <div id="dropZoneServer" class="drop-zone drop-zone-sm">
             <div class="drop-zone-inner">
-              <div class="drop-icon">☁️</div>
-              <div class="drop-text">Kéo thả để upload lên server</div>
+              <div class="drop-icon">🐙</div>
+              <div class="drop-text">
+                Kéo thả ảnh / video để push lên GitHub
+              </div>
               <div class="drop-sub">
                 hoặc
                 <button class="drop-browse" id="btnBrowseServer">
                   chọn file
                 </button>
               </div>
+              <div class="drop-accept">Mỗi file được commit thẳng vào repo</div>
             </div>
           </div>
           <input

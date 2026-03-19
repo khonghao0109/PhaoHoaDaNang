@@ -108,23 +108,10 @@ const trimEndLabel = document.getElementById("trimEndLabel");
 const trimDurLabel = document.getElementById("trimDurLabel");
 
 /* Upload panel */
-const btnOpenUpload = document.getElementById("btnOpenUpload");
-const uploadInput = document.getElementById("uploadInput");
-const btnBrowse = document.getElementById("btnBrowse");
-const dropZone = document.getElementById("dropZone");
-const serverUrl = document.getElementById("serverUrl");
-const serverToken = document.getElementById("serverToken");
-const btnSaveServer = document.getElementById("btnSaveServer");
-const btnTestServer = document.getElementById("btnTestServer");
-const serverStatus = document.getElementById("serverStatus");
-const folderSelect = document.getElementById("folderSelect");
-const btnRefreshFolders = document.getElementById("btnRefreshFolders");
-const newFolderName = document.getElementById("newFolderName");
-const btnCreateFolder = document.getElementById("btnCreateFolder");
-const dropZoneServer = document.getElementById("dropZoneServer");
-const uploadServerInput = document.getElementById("uploadServerInput");
-const btnBrowseServer = document.getElementById("btnBrowseServer");
-const serverUploadQueue = document.getElementById("serverUploadQueue");
+var btnOpenUpload = document.getElementById("btnOpenUpload");
+var uploadInput = document.getElementById("uploadInput");
+var btnBrowse = document.getElementById("btnBrowse");
+var dropZone = document.getElementById("dropZone");
 
 /* ───────────────────────────────────────────────────────────────
  *  STATE
@@ -215,6 +202,13 @@ function hideProgress() {
  *  LIGHTBOX OPEN / CLOSE
  * ─────────────────────────────────────────────────────────────── */
 function openLightbox(src, title) {
+  /* ── Pause every video currently playing on the page ── */
+  document.querySelectorAll("video").forEach(function (v) {
+    if (v !== videoEl && !v.paused) {
+      v.pause();
+    }
+  });
+
   currentSrc = src;
   currentIsVideo = isVid(src);
   lbCaption.textContent = title || "";
@@ -1451,209 +1445,348 @@ function renderLocalUploads() {
 }
 
 /* ───────────────────────────────────────────────────────────────
- *  SERVER UPLOAD
- *  Expected API:
- *    GET  {serverUrl}/folders       → { folders: ["name",...] }
- *    POST {serverUrl}/folders       → { folder: "name" }
- *         body: { name: "folder", token: "..." }
- *    POST {serverUrl}/upload        → { url: "...", filename: "..." }
- *         multipart: file, folder, token
+ *  GITHUB UPLOAD
+ *  Uses GitHub Contents API:
+ *    GET  /repos/{owner}/{repo}/contents/{path}  → list folder
+ *    PUT  /repos/{owner}/{repo}/contents/{path}  → create/update file
  * ─────────────────────────────────────────────────────────────── */
-function getServerConfig() {
+
+/* ── DOM refs for GitHub tab ── */
+var ghOwner = document.getElementById("ghOwner");
+var ghRepo = document.getElementById("ghRepo");
+var ghBranch = document.getElementById("ghBranch");
+var ghToken = document.getElementById("ghToken");
+var btnSaveGh = document.getElementById("btnSaveGh");
+var btnTestGh = document.getElementById("btnTestGh");
+var serverStatus = document.getElementById("serverStatus");
+var folderSelect = document.getElementById("folderSelect");
+var btnRefreshFolders = document.getElementById("btnRefreshFolders");
+var newFolderName = document.getElementById("newFolderName");
+var btnCreateFolder = document.getElementById("btnCreateFolder");
+var dropZoneServer = document.getElementById("dropZoneServer");
+var uploadServerInput = document.getElementById("uploadServerInput");
+var btnBrowseServer = document.getElementById("btnBrowseServer");
+var serverUploadQueue = document.getElementById("serverUploadQueue");
+
+/* ── Config helpers ── */
+function getGhConfig() {
   return {
-    url: localStorage.getItem("mp_server_url") || "",
-    token: localStorage.getItem("mp_server_token") || "",
+    owner: localStorage.getItem("gh_owner") || "",
+    repo: localStorage.getItem("gh_repo") || "",
+    branch: localStorage.getItem("gh_branch") || "main",
+    token: localStorage.getItem("gh_token") || "",
   };
 }
 
-function setServerStatus(msg, type = "") {
+function setGhStatus(msg, type) {
   serverStatus.textContent = msg;
   serverStatus.className = "server-status " + (type || "");
 }
 
-/* Load saved config */
-(() => {
-  const cfg = getServerConfig();
-  if (cfg.url) serverUrl.value = cfg.url;
-  if (cfg.token) serverToken.value = cfg.token;
+/* ── Load saved config ── */
+(function () {
+  var cfg = getGhConfig();
+  if (ghOwner && cfg.owner) ghOwner.value = cfg.owner;
+  if (ghRepo && cfg.repo) ghRepo.value = cfg.repo;
+  if (ghBranch && cfg.branch) ghBranch.value = cfg.branch;
+  if (ghToken && cfg.token) ghToken.value = cfg.token;
 })();
 
-btnSaveServer.addEventListener("click", () => {
-  localStorage.setItem("mp_server_url", serverUrl.value.trim());
-  localStorage.setItem("mp_server_token", serverToken.value.trim());
-  setServerStatus("✅ Đã lưu cấu hình!", "ok");
-  setTimeout(() => setServerStatus(""), 2500);
-});
+/* ── Save ── */
+if (btnSaveGh)
+  btnSaveGh.addEventListener("click", function () {
+    localStorage.setItem("gh_owner", (ghOwner.value || "").trim());
+    localStorage.setItem("gh_repo", (ghRepo.value || "").trim());
+    localStorage.setItem("gh_branch", (ghBranch.value || "main").trim());
+    localStorage.setItem("gh_token", (ghToken.value || "").trim());
+    setGhStatus("✅ Đã lưu cấu hình!", "ok");
+    setTimeout(function () {
+      setGhStatus("");
+    }, 2500);
+  });
 
-btnTestServer.addEventListener("click", async () => {
-  const { url, token } = getServerConfig();
-  if (!url) {
-    setServerStatus("❌ Chưa nhập Server URL", "err");
-    return;
-  }
-  setServerStatus("🔌 Đang kiểm tra…");
-  try {
-    const res = await fetch(`${url}/folders`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+/* ── GitHub API fetch wrapper ── */
+async function ghFetch(path, method, body) {
+  var cfg = getGhConfig();
+  if (!cfg.token) throw new Error("Chưa nhập GitHub Token");
+  var opts = {
+    method: method || "GET",
+    headers: {
+      Authorization: "token " + cfg.token,
+      Accept: "application/vnd.github.v3+json",
+      "Content-Type": "application/json",
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  var url = "https://api.github.com" + path;
+  var res = await fetch(url, opts);
+  if (!res.ok) {
+    var err = await res.json().catch(function () {
+      return {};
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const j = await res.json();
-    setServerStatus(
-      `✅ Kết nối OK! (${(j.folders || []).length} folder)`,
-      "ok",
-    );
-    populateFolders(j.folders || []);
-  } catch (e) {
-    setServerStatus("❌ Lỗi: " + (e.message || e), "err");
+    throw new Error(err.message || "HTTP " + res.status);
   }
-});
+  return res.json();
+}
 
-async function fetchFolders() {
-  const { url, token } = getServerConfig();
-  if (!url) return;
+/* ── Test connection ── */
+if (btnTestGh)
+  btnTestGh.addEventListener("click", async function () {
+    var cfg = getGhConfig();
+    if (!cfg.owner || !cfg.repo) {
+      setGhStatus("❌ Nhập Owner và Repo trước", "err");
+      return;
+    }
+    setGhStatus("🔌 Đang kiểm tra…");
+    try {
+      var data = await ghFetch("/repos/" + cfg.owner + "/" + cfg.repo);
+      setGhStatus(
+        "✅ Kết nối OK — " + data.full_name + " (" + data.default_branch + ")",
+        "ok",
+      );
+      fetchGhFolders();
+    } catch (e) {
+      setGhStatus("❌ " + e.message, "err");
+    }
+  });
+
+/* ── List folders (top-level + docs/media) ── */
+async function fetchGhFolders() {
+  var cfg = getGhConfig();
+  if (!cfg.owner || !cfg.repo || !cfg.token) return;
+  setGhStatus("🔄 Đang tải danh sách folder…");
   try {
-    const res = await fetch(`${url}/folders`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const j = await res.json();
-    populateFolders(j.folders || []);
+    /* Try docs/media first (common pattern for this project) */
+    var folders = [];
+    var tryPaths = ["docs/media", "media", ""];
+    var found = false;
+    for (var pi = 0; pi < tryPaths.length; pi++) {
+      var tryPath = tryPaths[pi];
+      try {
+        var path =
+          "/repos/" +
+          cfg.owner +
+          "/" +
+          cfg.repo +
+          "/contents" +
+          (tryPath ? "/" + tryPath : "");
+        var items = await ghFetch(path + "?ref=" + cfg.branch);
+        if (Array.isArray(items)) {
+          items.forEach(function (item) {
+            if (item.type === "dir") {
+              folders.push(tryPath ? tryPath + "/" + item.name : item.name);
+            }
+          });
+          /* Also add the base path itself as an upload target */
+          if (tryPath) folders.unshift(tryPath);
+          found = true;
+          break;
+        }
+      } catch (_) {
+        /* try next path */
+      }
+    }
+    if (!found || folders.length === 0) {
+      /* fallback: show root dirs */
+      var root = await ghFetch(
+        "/repos/" + cfg.owner + "/" + cfg.repo + "/contents?ref=" + cfg.branch,
+      );
+      if (Array.isArray(root)) {
+        root.forEach(function (item) {
+          if (item.type === "dir") folders.push(item.name);
+        });
+      }
+    }
+    populateGhFolders(folders);
+    setGhStatus("✅ Đã tải " + folders.length + " folder", "ok");
+    setTimeout(function () {
+      setGhStatus("");
+    }, 2000);
   } catch (e) {
-    setServerStatus("❌ Không tải được folders: " + (e.message || e), "err");
+    setGhStatus("❌ " + e.message, "err");
   }
 }
 
-function populateFolders(folders) {
-  folderSelect.innerHTML = `<option value="">-- Chọn folder --</option>`;
-  folders.forEach((f) => {
-    const o = document.createElement("option");
+function populateGhFolders(folders) {
+  if (!folderSelect) return;
+  folderSelect.innerHTML = "<option value=''>-- Chọn folder --</option>";
+  folders.forEach(function (f) {
+    var o = document.createElement("option");
     o.value = f;
     o.textContent = f;
     folderSelect.appendChild(o);
   });
 }
 
-btnRefreshFolders.addEventListener("click", fetchFolders);
+if (btnRefreshFolders)
+  btnRefreshFolders.addEventListener("click", fetchGhFolders);
 
-btnCreateFolder.addEventListener("click", async () => {
-  const name = newFolderName.value.trim();
-  if (!name) {
-    setServerStatus("❌ Nhập tên folder trước", "err");
-    return;
-  }
-  const { url, token } = getServerConfig();
-  if (!url) {
-    setServerStatus("❌ Chưa cấu hình Server URL", "err");
-    return;
-  }
-  try {
-    setServerStatus("➕ Đang tạo folder…");
-    const res = await fetch(`${url}/folders`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ name, token }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    setServerStatus(`✅ Đã tạo folder "${name}"!`, "ok");
-    newFolderName.value = "";
-    await fetchFolders();
-  } catch (e) {
-    setServerStatus("❌ Lỗi tạo folder: " + (e.message || e), "err");
-  }
-});
+/* ── Create folder (by pushing .gitkeep) ── */
+if (btnCreateFolder)
+  btnCreateFolder.addEventListener("click", async function () {
+    var name = newFolderName.value.trim();
+    if (!name) {
+      setGhStatus("❌ Nhập tên folder trước", "err");
+      return;
+    }
+    /* Normalise: no leading/trailing slash */
+    name = name.replace(/^\/+|\/+$/g, "");
+    var cfg = getGhConfig();
+    if (!cfg.owner || !cfg.repo) {
+      setGhStatus("❌ Cấu hình repo trước", "err");
+      return;
+    }
+    setGhStatus("➕ Đang tạo folder…");
+    try {
+      var filePath = name + "/.gitkeep";
+      await ghFetch(
+        "/repos/" + cfg.owner + "/" + cfg.repo + "/contents/" + filePath,
+        "PUT",
+        {
+          message: "Create folder " + name + " via MyPictures",
+          content: "",
+          /* empty file, base64 of "" */
+          branch: cfg.branch,
+        },
+      );
+      setGhStatus('✅ Đã tạo folder "' + name + '"!', "ok");
+      newFolderName.value = "";
+      fetchGhFolders();
+    } catch (e) {
+      setGhStatus("❌ " + e.message, "err");
+    }
+  });
 
-/* Server upload */
-btnBrowseServer.addEventListener("click", () => uploadServerInput.click());
-uploadServerInput.addEventListener("change", () =>
-  handleServerUpload(uploadServerInput.files),
-);
-dropZoneServer.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropZoneServer.classList.add("drag-over");
-});
-dropZoneServer.addEventListener("dragleave", () =>
-  dropZoneServer.classList.remove("drag-over"),
-);
-dropZoneServer.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZoneServer.classList.remove("drag-over");
-  handleServerUpload(e.dataTransfer.files);
-});
+/* ── File → base64 ── */
+function fileToBase64(file) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      resolve(reader.result.split(",")[1]);
+    };
+    reader.onerror = function () {
+      reject(new Error("Đọc file thất bại"));
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
-async function handleServerUpload(fileList) {
+/* ── Upload files to GitHub ── */
+if (btnBrowseServer)
+  btnBrowseServer.addEventListener("click", function () {
+    uploadServerInput.click();
+  });
+if (uploadServerInput)
+  uploadServerInput.addEventListener("change", function () {
+    handleGhUpload(uploadServerInput.files);
+  });
+if (dropZoneServer) {
+  dropZoneServer.addEventListener("dragover", function (e) {
+    e.preventDefault();
+    dropZoneServer.classList.add("drag-over");
+  });
+  dropZoneServer.addEventListener("dragleave", function () {
+    dropZoneServer.classList.remove("drag-over");
+  });
+  dropZoneServer.addEventListener("drop", function (e) {
+    e.preventDefault();
+    dropZoneServer.classList.remove("drag-over");
+    handleGhUpload(e.dataTransfer.files);
+  });
+}
+
+async function handleGhUpload(fileList) {
   if (!fileList || !fileList.length) return;
-  const { url, token } = getServerConfig();
-  if (!url) {
-    setServerStatus("❌ Chưa cấu hình Server URL", "err");
+  var cfg = getGhConfig();
+  if (!cfg.token) {
+    setGhStatus("❌ Nhập GitHub Token trước", "err");
     return;
   }
-  const folder = folderSelect.value;
+  if (!cfg.owner || !cfg.repo) {
+    setGhStatus("❌ Cấu hình Owner/Repo trước", "err");
+    return;
+  }
+  var folder = folderSelect ? folderSelect.value : "";
   if (!folder) {
-    setServerStatus("❌ Chọn folder trước khi upload", "err");
+    setGhStatus("❌ Chọn folder đích trước", "err");
     return;
   }
 
   serverUploadQueue.hidden = false;
+  serverUploadQueue.innerHTML = "";
 
-  const files = Array.from(fileList);
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    const itemEl = document.createElement("div");
+  for (var i = 0; i < fileList.length; i++) {
+    var f = fileList[i];
+    /* create queue item */
+    var itemEl = document.createElement("div");
     itemEl.className = "queue-item";
-    itemEl.innerHTML = `
-            <span class="queue-item-name" title="${f.name}">${f.name}</span>
-            <div class="queue-progress"><div class="queue-progress-bar" id="qpb${i}"></div></div>
-            <span class="queue-item-status" id="qst${i}">⏳ Chờ…</span>
-        `;
+    var qid = "q_" + Date.now() + "_" + i;
+    itemEl.innerHTML =
+      "<span class='queue-item-name' title='" +
+      f.name +
+      "'>" +
+      f.name +
+      "</span>" +
+      "<div class='queue-progress'><div class='queue-progress-bar' id='pb_" +
+      qid +
+      "'></div></div>" +
+      "<span class='queue-item-status' id='st_" +
+      qid +
+      "'>⏳ Đang đọc…</span>";
     serverUploadQueue.appendChild(itemEl);
 
-    try {
-      const fd = new FormData();
-      fd.append("file", f);
-      fd.append("folder", folder);
-      if (token) fd.append("token", token);
+    var stEl = document.getElementById("st_" + qid);
+    var pbEl = document.getElementById("pb_" + qid);
 
-      /* XHR for progress */
-      await new Promise((res, rej) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", `${url}/upload`);
-        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) {
-            const pct = Math.round((ev.loaded / ev.total) * 100);
-            const bar = document.getElementById("qpb" + i);
-            const st = document.getElementById("qst" + i);
-            if (bar) bar.style.width = pct + "%";
-            if (st) st.textContent = pct + "%";
-          }
-        };
-        xhr.onload = () => {
-          const st = document.getElementById("qst" + i);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            if (st) {
-              st.textContent = "✅ Xong!";
-              st.className = "queue-item-status ok";
-            }
-            res();
-          } else {
-            if (st) {
-              st.textContent = `❌ HTTP ${xhr.status}`;
-              st.className = "queue-item-status err";
-            }
-            rej(new Error("HTTP " + xhr.status));
-          }
-        };
-        xhr.onerror = () => rej(new Error("Network error"));
-        xhr.send(fd);
-      });
+    try {
+      /* 1. read as base64 */
+      if (pbEl) pbEl.style.width = "20%";
+      var b64 = await fileToBase64(f);
+      if (pbEl) pbEl.style.width = "45%";
+      if (stEl) stEl.textContent = "📤 Đang push…";
+
+      /* 2. check if file already exists (need SHA to update) */
+      var filePath = folder + "/" + f.name;
+      var apiPath =
+        "/repos/" + cfg.owner + "/" + cfg.repo + "/contents/" + filePath;
+      var sha = null;
+      try {
+        var existing = await ghFetch(apiPath + "?ref=" + cfg.branch);
+        if (existing && existing.sha) sha = existing.sha;
+      } catch (_) {
+        /* file doesn't exist, sha stays null */
+      }
+
+      if (pbEl) pbEl.style.width = "65%";
+
+      /* 3. PUT to GitHub */
+      var body = {
+        message: (sha ? "Update " : "Upload ") + f.name + " via MyPictures",
+        content: b64,
+        branch: cfg.branch,
+      };
+      if (sha) body.sha = sha;
+
+      var result = await ghFetch(apiPath, "PUT", body);
+      if (pbEl) pbEl.style.width = "100%";
+      var fileUrl =
+        result && result.content && result.content.html_url
+          ? result.content.html_url
+          : "#";
+      if (stEl) {
+        stEl.innerHTML =
+          "<a href='" +
+          fileUrl +
+          "' target='_blank' rel='noopener'>✅ Xem trên GitHub</a>";
+        stEl.className = "queue-item-status ok";
+      }
     } catch (e) {
-      const st = document.getElementById("qst" + i);
-      if (st) {
-        st.textContent = "❌ " + e.message;
-        st.className = "queue-item-status err";
+      if (stEl) {
+        stEl.textContent = "❌ " + e.message;
+        stEl.className = "queue-item-status err";
+      }
+      if (pbEl) {
+        pbEl.style.background = "#ff6060";
       }
     }
   }
@@ -1788,8 +1921,9 @@ async function init() {
     albumsEl.innerHTML = `<div class="empty-state">⚠️ Không tải được manifest.json: ${e.message}</div>`;
   }
   applyFilters();
-  /* Pre-load server folders if configured */
-  if (getServerConfig().url) fetchFolders().catch(() => {});
+  /* Pre-load GitHub folders if configured */
+  if (getGhConfig().token && getGhConfig().owner)
+    fetchGhFolders().catch(function () {});
 }
 
 init();
