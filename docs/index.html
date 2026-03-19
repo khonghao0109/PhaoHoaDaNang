@@ -21,7 +21,6 @@
             <div class="subtitle">Portfolio ảnh &amp; video — khonghao0109</div>
           </div>
         </div>
-
         <div class="controls">
           <input
             id="search"
@@ -32,15 +31,11 @@
           <select id="filter" aria-label="Lọc album">
             <option value="all">Tất cả</option>
             <option value="PhaoHoaDHD_XIV">Pháo hoa DHD XIV</option>
-            <option value="__uploads__">📁 Uploads của tôi</option>
+            <option value="__uploads__" class="filter-opt-uploads">
+              📁 Uploads của tôi
+            </option>
           </select>
-          <button
-            class="btn-upload"
-            id="btnOpenUpload"
-            title="Upload ảnh hoặc video từ máy"
-          >
-            📁 Upload
-          </button>
+          <button class="btn-upload" id="btnOpenUpload">📁 Upload</button>
           <input
             id="uploadInput"
             type="file"
@@ -58,57 +53,123 @@
         <p>Ảnh hiển thị trực tiếp từ GitHub.</p>
       </section>
 
-      <!-- Upload drop zone (hidden by default) -->
-      <div id="dropZone" class="drop-zone" hidden>
-        <div class="drop-zone-inner">
-          <div class="drop-icon">📂</div>
-          <div class="drop-text">Kéo thả ảnh / video vào đây</div>
-          <div class="drop-sub">
-            hoặc
-            <button class="drop-browse" id="btnBrowse">chọn file từ máy</button>
+      <!-- ═══ UPLOAD PANEL ═══ -->
+      <div id="uploadPanel" class="upload-panel" hidden>
+        <div class="upload-tabs">
+          <button class="upload-tab active" data-tab="local">
+            💻 Từ máy tính
+          </button>
+          <button class="upload-tab" data-tab="server">🌐 Lên Server</button>
+        </div>
+
+        <!-- Tab Local -->
+        <div id="tabLocal" class="upload-tab-content">
+          <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-inner">
+              <div class="drop-icon">📂</div>
+              <div class="drop-text">Kéo thả ảnh / video vào đây</div>
+              <div class="drop-sub">
+                hoặc
+                <button class="drop-browse" id="btnBrowse">
+                  chọn file từ máy
+                </button>
+              </div>
+              <div class="drop-accept">JPG · PNG · WEBP · GIF · MP4 · WEBM</div>
+            </div>
           </div>
-          <div class="drop-accept">Hỗ trợ: JPG, PNG, WEBP, GIF, MP4, WEBM</div>
+        </div>
+
+        <!-- Tab Server -->
+        <div id="tabServer" class="upload-tab-content" hidden>
+          <div class="server-config">
+            <div class="server-config-row">
+              <span class="server-label">🔗 Server URL:</span>
+              <input
+                id="serverUrl"
+                class="server-input"
+                type="url"
+                placeholder="https://your-server.com/api"
+              />
+              <input
+                id="serverToken"
+                class="server-input server-input-sm"
+                type="password"
+                placeholder="Token (tuỳ chọn)"
+              />
+              <button class="server-btn" id="btnSaveServer">💾 Lưu</button>
+              <button class="server-btn" id="btnTestServer">🔌 Kiểm tra</button>
+            </div>
+            <div class="server-status" id="serverStatus"></div>
+          </div>
+
+          <div class="folder-manager">
+            <div class="folder-manager-row">
+              <span class="server-label">📁 Folder:</span>
+              <select id="folderSelect" class="folder-select">
+                <option value="">-- Chọn folder --</option>
+              </select>
+              <button class="server-btn" id="btnRefreshFolders">🔄</button>
+              <span class="server-label">Tạo mới:</span>
+              <input
+                id="newFolderName"
+                class="server-input server-input-sm"
+                placeholder="Tên folder..."
+              />
+              <button class="server-btn server-btn-accent" id="btnCreateFolder">
+                ➕ Tạo folder
+              </button>
+            </div>
+          </div>
+
+          <div id="dropZoneServer" class="drop-zone drop-zone-sm">
+            <div class="drop-zone-inner">
+              <div class="drop-icon">☁️</div>
+              <div class="drop-text">Kéo thả để upload lên server</div>
+              <div class="drop-sub">
+                hoặc
+                <button class="drop-browse" id="btnBrowseServer">
+                  chọn file
+                </button>
+              </div>
+            </div>
+          </div>
+          <input
+            id="uploadServerInput"
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            hidden
+          />
+
+          <div id="serverUploadQueue" class="server-queue" hidden></div>
         </div>
       </div>
 
-      <!-- Uploads album (populated dynamically) -->
       <section id="uploadsSection" hidden></section>
-
-      <!-- ===== ALBUMS từ manifest ===== -->
       <section id="albums" class="albums"></section>
     </main>
 
-    <!-- ===================== LIGHTBOX ===================== -->
+    <!-- ═══════════════════ LIGHTBOX ═══════════════════ -->
     <div id="lightbox" class="lightbox" aria-hidden="true">
-      <div
-        class="lb-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Xem ảnh / video"
-      >
-        <!-- TOP BAR -->
+      <div class="lb-panel" role="dialog" aria-modal="true">
         <div class="lb-top">
           <div class="lb-headtext">
             <div class="lb-title" id="lbCaption"></div>
-            <div class="lb-desc multiline" id="lbDesc"></div>
+            <div class="lb-desc" id="lbDesc"></div>
           </div>
           <button class="lb-close" id="lbClose" aria-label="Đóng">✕</button>
         </div>
 
-        <!-- ===== TOOLBAR ẢNH ===== -->
+        <!-- ══ ẢNH: Toolbar ══ -->
         <div class="lb-toolbar" id="toolbarImage">
           <button id="btnZoomOut" class="lb-btn">➖ Zoom</button>
           <button id="btnZoomIn" class="lb-btn">➕ Zoom</button>
           <button id="btnReset" class="lb-btn">↺ Reset</button>
-
           <span class="lb-sep"></span>
-
           <button id="btnRotate" class="lb-btn">⤾ Xoay 90°</button>
           <button id="btnFlipX" class="lb-btn">⇋ Lật ngang</button>
           <button id="btnFlipY" class="lb-btn">⇅ Lật dọc</button>
-
           <span class="lb-sep"></span>
-
           <button id="btnGray" class="lb-btn lb-toggle">⬛ Đen trắng</button>
           <button id="btnBrightUp" class="lb-btn">☀️ Sáng +</button>
           <button id="btnBrightDown" class="lb-btn">🌙 Sáng −</button>
@@ -117,17 +178,13 @@
           <button id="btnSharpen" class="lb-btn lb-toggle">🔍 Nét</button>
           <button id="btnDenoise" class="lb-btn lb-toggle">🧼 Khử nhiễu</button>
           <button id="btnAuto" class="lb-btn">✨ Auto</button>
-
           <span class="lb-sep"></span>
-
           <button id="btnCrop" class="lb-btn lb-btn-warn lb-toggle">
             ✂ Crop
           </button>
           <button id="btnApplyCrop" class="lb-btn" disabled>✅ Apply</button>
           <button id="btnClearCrop" class="lb-btn" disabled>🧹 Clear</button>
-
           <span class="lb-sep"></span>
-
           <a id="btnDownloadOriginal" class="lb-btn lb-link" href="#" download
             >⬇ Tải gốc</a
           >
@@ -136,9 +193,8 @@
           >
         </div>
 
-        <!-- ===== TOOLBAR VIDEO ===== -->
-        <div class="lb-toolbar lb-toolbar-video" id="toolbarVideo">
-          <!-- Speed -->
+        <!-- ══ VIDEO: Toolbar hàng 1 — Tốc độ · Cắt · Tải ══ -->
+        <div class="lb-toolbar lb-toolbar-vid" id="toolbarVideoRow1">
           <label class="lb-label">Tốc độ:</label>
           <select
             id="speedControl"
@@ -154,48 +210,85 @@
             <option value="1.75">1.75×</option>
             <option value="2">2×</option>
           </select>
-
           <span class="lb-sep"></span>
-
-          <!-- Trim -->
-          <label class="lb-label">Cắt video:</label>
-          <button class="lb-btn" id="btnSetStart" onclick="setStart()">
-            ⏮ Đặt Start
-          </button>
+          <label class="lb-label">Cắt:</label>
+          <button class="lb-btn" onclick="setStart()">⏮ Đặt Start</button>
           <span class="lb-time-badge" id="startBadge">0.00s</span>
-
-          <button class="lb-btn" id="btnSetEnd" onclick="setEnd()">
-            ⏭ Đặt End
-          </button>
+          <button class="lb-btn" onclick="setEnd()">⏭ Đặt End</button>
           <span class="lb-time-badge" id="endBadge">0.00s</span>
-
+          <span class="lb-sep"></span>
+          <label class="lb-label">Tải:</label>
+          <a id="btnDownloadVideo" class="lb-btn lb-link" href="#" download
+            >⬇ Video gốc</a
+          >
           <button
             class="lb-btn lb-btn-primary"
             id="btnTrim"
             onclick="trimVideo()"
           >
-            🎬 Xuất đoạn cắt
+            🎬 Xuất đã chỉnh
           </button>
-
-          <span class="lb-sep"></span>
-
-          <!-- Download -->
-          <a id="btnDownloadVideo" class="lb-btn lb-link" href="#" download
-            >⬇ Tải video gốc</a
+          <select
+            id="exportResolution"
+            class="lb-btn lb-select"
+            title="Độ phân giải xuất"
           >
+            <option value="source">Độ phân giải gốc</option>
+            <option value="1080">1080p (Full HD)</option>
+            <option value="720">720p (HD)</option>
+            <option value="480">480p (SD)</option>
+            <option value="360">360p (nhỏ)</option>
+          </select>
         </div>
 
-        <!-- Trim progress bar -->
+        <!-- ══ VIDEO: Toolbar hàng 2 — Màu · Âm · Crop ══ -->
+        <div
+          class="lb-toolbar lb-toolbar-vid lb-toolbar-vid2"
+          id="toolbarVideoRow2"
+        >
+          <label class="lb-label">Màu:</label>
+          <button class="lb-btn" id="vBtnBrightUp">☀️ Sáng +</button>
+          <button class="lb-btn" id="vBtnBrightDown">🌙 Sáng −</button>
+          <button class="lb-btn" id="vBtnContrastUp">🎚️ Contrast +</button>
+          <button class="lb-btn" id="vBtnContrastDown">🎚️ Contrast −</button>
+          <button class="lb-btn" id="vBtnSatUp">🌈 Bão hòa +</button>
+          <button class="lb-btn" id="vBtnSatDown">🌈 Bão hòa −</button>
+          <button class="lb-btn lb-toggle" id="vBtnGray">⬛ Đen trắng</button>
+          <button class="lb-btn" id="vBtnResetColor">↺ Reset màu</button>
+          <span class="lb-sep"></span>
+          <label class="lb-label">Âm:</label>
+          <button class="lb-btn lb-toggle" id="vBtnMute">🔊 Mute</button>
+          <input
+            type="range"
+            id="volumeSlider"
+            class="volume-slider"
+            min="0"
+            max="1"
+            step="0.05"
+            value="1"
+            title="Âm lượng"
+          />
+          <span class="lb-time-badge" id="volumeBadge">100%</span>
+          <span class="lb-sep"></span>
+          <label class="lb-label">Crop:</label>
+          <button class="lb-btn lb-btn-warn lb-toggle" id="vBtnCrop">
+            ✂ Crop
+          </button>
+          <button class="lb-btn" id="vBtnApplyCrop" disabled>✅ Apply</button>
+          <button class="lb-btn" id="vBtnClearCrop" disabled>🧹 Clear</button>
+        </div>
+
+        <!-- Trim / export progress -->
         <div id="trimProgress" class="trim-progress" hidden>
           <div class="trim-progress-bar" id="trimProgressBar"></div>
           <span class="trim-progress-label" id="trimProgressLabel"
-            >Đang cắt video…</span
+            >Đang xử lý…</span
           >
         </div>
 
         <!-- STAGE -->
         <div class="lb-stage">
-          <!-- IMAGE: compare view -->
+          <!-- Image compare -->
           <div class="compare-wrapper" id="compareWrapper">
             <div class="compare-box">
               <p class="compare-label">Ảnh gốc</p>
@@ -206,33 +299,30 @@
               <canvas id="lbCanvas"></canvas>
             </div>
           </div>
-
           <div id="lbHint" class="lb-hint" hidden>
             Kéo chuột để chọn vùng crop → bấm ✅ Apply
           </div>
 
-          <!-- VIDEO player -->
-          <video id="lbVideo" controls class="lb-video"></video>
+          <!-- Video + crop overlay -->
+          <div class="video-stage-wrap" id="videoStageWrap" hidden>
+            <video id="lbVideo" controls></video>
+            <canvas id="videoCropCanvas" class="video-crop-canvas"></canvas>
+            <div id="videoCropHint" class="lb-hint" hidden>
+              Kéo để chọn vùng giữ lại → bấm ✅ Apply
+            </div>
+          </div>
 
-          <!-- Video trim timeline -->
+          <!-- Trim timeline -->
           <div id="trimTimeline" class="trim-timeline" hidden>
             <div class="trim-track" id="trimTrack">
               <div class="trim-range" id="trimRange"></div>
-              <div
-                class="trim-handle trim-handle-start"
-                id="trimStart"
-                title="Điểm bắt đầu"
-              ></div>
-              <div
-                class="trim-handle trim-handle-end"
-                id="trimEnd"
-                title="Điểm kết thúc"
-              ></div>
+              <div class="trim-handle trim-handle-s" id="trimHandleStart"></div>
+              <div class="trim-handle trim-handle-e" id="trimHandleEnd"></div>
               <div class="trim-playhead" id="trimPlayhead"></div>
             </div>
             <div class="trim-labels">
               <span id="trimStartLabel">0:00</span>
-              <span id="trimDurLabel">Thời lượng: 0:00</span>
+              <span id="trimDurLabel">Thời lượng cắt: 0:00</span>
               <span id="trimEndLabel">0:00</span>
             </div>
           </div>
