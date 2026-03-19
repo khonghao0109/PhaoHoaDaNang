@@ -1,0 +1,65 @@
+[33mde665da[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to HEAD~2
+[33m54f59c0[m HEAD@{1}: checkout: moving from main to main
+[33m54f59c0[m HEAD@{2}: commit: de
+[33mfe9c3e8[m HEAD@{3}: commit: add anh video
+[33mde665da[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{4}: commit: FIX
+[33m4f59c2b[m HEAD@{5}: commit: TAMTAM
+[33m13c07e8[m HEAD@{6}: commit: ADD
+[33mc228a5c[m HEAD@{7}: commit: fix 9
+[33m06a96d6[m HEAD@{8}: commit: fix 8
+[33mf0aa503[m HEAD@{9}: commit: fix
+[33m2048a64[m HEAD@{10}: commit: fixx
+[33m0550d85[m HEAD@{11}: commit: fix
+[33m551d30a[m HEAD@{12}: commit: FIX
+[33md18a6b9[m HEAD@{13}: commit: ADD
+[33mce3784a[m HEAD@{14}: commit: AddChinhSuaAnh
+[33m41fe160[m HEAD@{15}: commit: fix1
+[33m2a9197f[m HEAD@{16}: commit: fix
+[33m63e2e32[m HEAD@{17}: pull --tags origin main (finish): returning to refs/heads/main
+[33m63e2e32[m HEAD@{18}: pull --tags origin main (pick): fix readme
+[33med0e99b[m HEAD@{19}: pull --tags origin main (start): checkout ed0e99bc10f0568b91ccb1245a6c9398bbecce6d
+[33mb79f9fe[m HEAD@{20}: commit: fix readme
+[33ma8037d0[m HEAD@{21}: pull --tags origin main (finish): returning to refs/heads/main
+[33ma8037d0[m HEAD@{22}: pull --tags origin main (pick): dele
+[33me4f2f90[m HEAD@{23}: pull --tags origin main (start): checkout e4f2f908219f7b7483de758329e146882af93ca8
+[33mc7e96ad[m HEAD@{24}: commit: dele
+[33m2f28560[m HEAD@{25}: commit: fix
+[33m6718a94[m HEAD@{26}: commit: dele
+[33mee969bf[m HEAD@{27}: Branch: renamed refs/heads/main to refs/heads/main
+[33mee969bf[m HEAD@{29}: commit: khunhieu
+[33mae56cbf[m HEAD@{30}: commit: add key
+[33m1dec670[m HEAD@{31}: commit: add server
+[33m297039d[m HEAD@{32}: commit: fix
+[33md0c92bb[m HEAD@{33}: pull --tags origin main (finish): returning to refs/heads/main
+[33md0c92bb[m HEAD@{34}: pull --tags origin main (pick): ADD
+[33m93bacd7[m HEAD@{35}: pull --tags origin main (start): checkout 93bacd733f0e15b1eaf725534b8b99d853770471
+[33m7bfa4f1[m HEAD@{36}: commit: ADD
+[33ma988e71[m HEAD@{37}: commit: add video
+[33mef4c251[m HEAD@{38}: pull origin main --rebase: Fast-forward
+[33m669d5b6[m HEAD@{39}: pull --tags origin main (finish): returning to refs/heads/main
+[33m669d5b6[m HEAD@{40}: pull --tags origin main (pick): add video
+[33mf08674e[m HEAD@{41}: pull --tags origin main (start): checkout f08674e8aad77960dcb81fb16b137415a1f98c87
+[33m0c0843f[m HEAD@{42}: commit: add video
+[33m25b2750[m HEAD@{43}: commit: add test
+[33md1a52f6[m HEAD@{44}: commit: fix js
+[33m773e327[m HEAD@{45}: commit: FIX js css
+[33mb34bc46[m HEAD@{46}: pull origin main --rebase (finish): returning to refs/heads/main
+[33mb34bc46[m HEAD@{47}: pull origin main --rebase (pick): fix css js
+[33m2d736d7[m HEAD@{48}: pull origin main --rebase (start): checkout 2d736d7f7e338302af8e907ba273d1eda35a59c9
+[33ma3b9318[m HEAD@{49}: commit: fix css js
+[33ma9e607a[m HEAD@{50}: commit: fix
+[33m0891b52[m HEAD@{51}: commit: addReadme
+[33madce9c9[m HEAD@{52}: commit: fixCSS
+[33m9c4fdce[m HEAD@{53}: commit: fixReadme
+[33m48a09b6[m HEAD@{54}: commit: FIX
+[33mabd1a32[m HEAD@{55}: commit: ADDjson
+[33me610592[m HEAD@{56}: commit: Fixsite
+[33m5dbc5c8[m HEAD@{57}: commit: fix
+[33m3c20eb8[m HEAD@{58}: commit: SiteWeb
+[33m8af9164[m HEAD@{59}: commit: FixReadme
+[33mba57ffd[m HEAD@{60}: commit: FixReadme
+[33m7530a24[m HEAD@{61}: commit: AddReadme
+[33m19aec24[m HEAD@{62}: commit: AddNew
+[33m1ffbee2[m HEAD@{63}: commit: AddReadme
+[33mf6dad94[m HEAD@{64}: commit: 30/1
+[33ma515e0d[m HEAD@{65}: clone: from https://github.com/khonghao0109/MyPictures.git
