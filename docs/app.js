@@ -315,9 +315,34 @@ function openLightbox(src, title, skipListRebuild) {
     trimTimeline.hidden = true;
 
     imgEl.onload = () => {
-      originalCanvas.width = imgEl.naturalWidth;
-      originalCanvas.height = imgEl.naturalHeight;
-      originalCtx.drawImage(imgEl, 0, 0);
+      /* ── Fix: set canvas pixel size to match its CSS display size,
+               then draw image scaled-to-fit (object-fit:contain behavior).
+               Previously width/height were set to naturalWidth/naturalHeight
+               which caused the canvas to be stretched/squished by CSS. ── */
+      const dpr = window.devicePixelRatio || 1;
+      const r = originalCanvas.getBoundingClientRect();
+      const cw = Math.max(1, Math.round(r.width * dpr));
+      const ch = Math.max(1, Math.round(r.height * dpr));
+      originalCanvas.width = cw;
+      originalCanvas.height = ch;
+
+      originalCtx.setTransform(1, 0, 0, 1, 0, 0);
+      originalCtx.imageSmoothingEnabled = true;
+      originalCtx.imageSmoothingQuality = "high";
+
+      /* scale to fit, centered, letterboxed */
+      const iw = imgEl.naturalWidth;
+      const ih = imgEl.naturalHeight;
+      const scale = Math.min(cw / iw, ch / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (cw - dw) / 2;
+      const dy = (ch - dh) / 2;
+
+      originalCtx.fillStyle = "#000";
+      originalCtx.fillRect(0, 0, cw, ch);
+      originalCtx.drawImage(imgEl, dx, dy, dw, dh);
+
       resetEdits();
       draw();
     };
@@ -497,8 +522,28 @@ function draw() {
   schedDlUpdate();
 }
 
-window.addEventListener("resize", () => {
-  if (!currentIsVideo) draw();
+window.addEventListener("resize", function () {
+  if (currentIsVideo) return;
+  draw();
+  if (!imgEl.naturalWidth) return;
+  var dpr = window.devicePixelRatio || 1;
+  var r = originalCanvas.getBoundingClientRect();
+  var cw = Math.max(1, Math.round(r.width * dpr));
+  var ch = Math.max(1, Math.round(r.height * dpr));
+  if (originalCanvas.width !== cw || originalCanvas.height !== ch) {
+    originalCanvas.width = cw;
+    originalCanvas.height = ch;
+  }
+  var iw = imgEl.naturalWidth,
+    ih = imgEl.naturalHeight;
+  var sc = Math.min(cw / iw, ch / ih);
+  var dw = iw * sc,
+    dh = ih * sc;
+  originalCtx.imageSmoothingEnabled = true;
+  originalCtx.imageSmoothingQuality = "high";
+  originalCtx.fillStyle = "#000";
+  originalCtx.fillRect(0, 0, cw, ch);
+  originalCtx.drawImage(imgEl, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
 });
 
 /* ───────────────────────────────────────────────────────────────
